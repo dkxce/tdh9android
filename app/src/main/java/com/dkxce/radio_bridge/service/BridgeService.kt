@@ -1,7 +1,15 @@
 /*
- * Foreground service hosting the BLE bridge and the TCP servers.
- * Author: dkxce (c) https://github.com/dkxce/Tidradio-TD-H9
- * Version: v1.0.0
+ ==============================================================================
+  Foreground service hosting the BLE bridge and the TCP servers
+  Author:  dkxce (c)  https://github.com/dkxce/Tidradio-TD-H9
+  Version: v1.1.0
+
+  English:  Runs the whole bridge: keeps the BLE connection and the selected
+            TCP server (Binary KISS / AGWPE / APRS-IS) alive, forwards radio
+            frames to clients and client frames to the radio. Foreground
+            service (connectedDevice) so it survives the screen turning off.
+  Russian:  Фоновый сервис, обеспечивающий работу моста BLE <-> TCP.
+ ==============================================================================
  */
 
 package com.dkxce.radio_bridge.service

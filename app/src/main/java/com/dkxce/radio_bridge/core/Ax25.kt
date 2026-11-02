@@ -1,7 +1,18 @@
 /*
- * AX.25 UI-frame decoder / encoder (binary <-> readable APRS text).
- * Author: dkxce (c) https://github.com/dkxce/Tidradio-TD-H9
- * Version: v1.0.0
+ ==============================================================================
+  AX.25 UI-frame decoder / encoder (binary <-> readable APRS text)
+  Author:  dkxce (c)  https://github.com/dkxce/Tidradio-TD-H9
+  Version: v1.1.0
+
+  English:  AX.25 binary frame encode/decode to/from readable APRS text.
+            Mirrors the Python reference (same address layout and control/PID).
+  Russian:  Кодирование/декодирование бинарных AX.25-кадров в читаемый
+            APRS-текст и обратно.
+
+  AX.25 address block: dest(7) source(7) repeaters(7 each). Each address is
+  7 bytes: 6 chars left-shifted by 1, then SSID (bits 1..4) + last-flag (bit 0).
+  UI frames use control 0x03 and PID 0xF0 (no layer 3).
+ ==============================================================================
  */
 
 package com.dkxce.radio_bridge.core

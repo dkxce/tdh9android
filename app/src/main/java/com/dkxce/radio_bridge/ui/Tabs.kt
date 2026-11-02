@@ -1,7 +1,13 @@
 /*
- * Device tab: scan / list / connect. Server tab: mode+port. Log tab.
- * Author: dkxce (c) https://github.com/dkxce/Tidradio-TD-H9
- * Version: v1.0.0
+ ==============================================================================
+  Compose tabs: device / server / log / about
+  Author:  dkxce (c)  https://github.com/dkxce/Tidradio-TD-H9
+  Version: v1.1.0
+
+  English:  DeviceTab (scan/connect/history), ServerTab (mode/port/start-stop,
+            client list, local addresses), LogTab and AboutTab.
+  Russian:  Вкладки интерфейса: Рация / Сервер / Лог / About.
+ ==============================================================================
  */
 
 package com.dkxce.radio_bridge.ui

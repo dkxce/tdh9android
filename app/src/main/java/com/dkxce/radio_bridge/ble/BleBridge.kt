@@ -1,7 +1,16 @@
 /*
- * BLE bridge to use a TIDRadio TD-H9 as a KISS TNC over BLE GATT.
- * Author: dkxce (c) https://github.com/dkxce/Tidradio-TD-H9
- * Version: v1.0.0
+ ==============================================================================
+  BLE bridge: use a TIDRadio TD-H9 as a KISS TNC over BLE GATT
+  Author:  dkxce (c)  https://github.com/dkxce/Tidradio-TD-H9
+  Version: v1.1.0
+
+  English:  Wraps the Android BluetoothGatt API. Scans, connects, discovers
+            services, resolves write/notify characteristics (preferring Odmaster
+            af01/af02, falling back to ff02/ffe2 and ff01/ffe1) and pipes
+            incoming bytes into a KissParser. Mirrors the Python ble_radio.
+  Russian:  BLE-мост: рация как KISS TNC (сервис APRS 0000af00, write af01,
+            notify af02).
+ ==============================================================================
  */
 
 package com.dkxce.radio_bridge.ble

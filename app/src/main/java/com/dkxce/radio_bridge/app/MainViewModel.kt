@@ -1,7 +1,12 @@
 /*
- * ViewModel bridging the BridgeService AppModel state to the UI.
- * Author: dkxce (c) https://github.com/dkxce/Tidradio-TD-H9
- * Version: v1.0.0
+ ==============================================================================
+  ViewModel bridging the BridgeService AppModel state to the UI
+  Author:  dkxce (c)  https://github.com/dkxce/Tidradio-TD-H9
+  Version: v1.1.0
+
+  English:  Exposes the UiState StateFlow and settings mutations to Compose.
+  Russian:  ViewModel, связывающий состояние AppModel с интерфейсом.
+ ==============================================================================
  */
 
 package com.dkxce.radio_bridge.app

@@ -1,7 +1,13 @@
 /*
- * Top-level Compose screen: tabs, device scan, server control, log.
- * Author: dkxce (c) https://github.com/dkxce/Tidradio-TD-H9
- * Version: v1.0.0
+ ==============================================================================
+  Top-level Compose screen: tabs, device scan, server control, log
+  Author:  dkxce (c)  https://github.com/dkxce/Tidradio-TD-H9
+  Version: v1.1.0
+
+  English:  Main Scaffold with bottom navigation (Radio / Server / Log /
+            About) wiring the Compose tabs to the app callbacks.
+  Russian:  Каркас экрана с вкладками (Рация/Сервер/Лог/About).
+ ==============================================================================
  */
 
 package com.dkxce.radio_bridge.ui

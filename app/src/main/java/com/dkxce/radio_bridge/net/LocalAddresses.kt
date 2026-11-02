@@ -1,7 +1,15 @@
 /*
- * Network address helper: lists local IPv4 addresses of the device.
- * Author: dkxce (c) https://github.com/dkxce/Tidradio-TD-H9
- * Version: v1.0.0
+ ==============================================================================
+  Local network address helper
+  Author:  dkxce (c)  https://github.com/dkxce/Tidradio-TD-H9
+  Version: v1.1.0
+
+  English:  Enumerates local (non-loopback) IPv4 addresses of the device so
+            external APRS clients on the same Wi-Fi/LAN can reach the TCP
+            servers. Works without extra permissions.
+  Russian:  Перечисляет локальные IPv4-адреса устройства для подключения
+            APRS-клиентов по сети.
+ ==============================================================================
  */
 
 package com.dkxce.radio_bridge.net

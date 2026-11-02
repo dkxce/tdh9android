@@ -1,7 +1,15 @@
 /*
- * APRS-IS compatible TCP server (text protocol + passcode check).
- * Author: dkxce (c) https://github.com/dkxce/Tidradio-TD-H9
- * Version: v1.0.0
+ ==============================================================================
+  APRS-IS compatible TCP server (text protocol + passcode check)
+  Author:  dkxce (c)  https://github.com/dkxce/Tidradio-TD-H9
+  Version: v1.1.0
+
+  English:  APRS-IS compatible server (port 14580). Clients log in with
+            "user CALL pass PASSCODE vers ...". Passcode verification is
+            mandatory; verified clients get "/tx", unverified "/rx" in the
+            client list. Mirrors the Python reference aprsis_server.
+  Russian:  Сервер, совместимый с протоколом APRS-IS (порт 14580).
+ ==============================================================================
  */
 
 package com.dkxce.radio_bridge.net

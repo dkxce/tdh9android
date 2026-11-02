@@ -1,7 +1,15 @@
 /*
- * App settings + live UI state (SharedPreferences-backed).
- * Author: dkxce (c) https://github.com/dkxce/Tidradio-TD-H9
- * Version: v1.0.0
+ ==============================================================================
+  App settings + live UI state (SharedPreferences-backed)
+  Author:  dkxce (c)  https://github.com/dkxce/Tidradio-TD-H9
+  Version: v1.1.0
+
+  English:  Process-wide singleton holding the app configuration (server mode,
+            port, device history) and the UI state (devices, server status,
+            client list, log). Both the UI and the BridgeService observe the
+            same instance.
+  Russian:  Настройки приложения и состояние интерфейса (единый синглтон).
+ ==============================================================================
  */
 
 package com.dkxce.radio_bridge.app

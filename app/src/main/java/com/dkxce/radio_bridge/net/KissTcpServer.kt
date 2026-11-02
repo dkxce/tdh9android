@@ -1,7 +1,15 @@
 /*
- * Binary KISS over TCP server.
- * Author: dkxce (c) https://github.com/dkxce/Tidradio-TD-H9
- * Version: v1.0.0
+ ==============================================================================
+  Binary KISS over TCP server
+  Author:  dkxce (c)  https://github.com/dkxce/Tidradio-TD-H9
+  Version: v1.1.0
+
+  English:  Presents the radio as a raw KISS TNC over TCP (binary framing),
+            exactly like a serial TNC over the network. Clients send KISS
+            frames to TX and receive radio frames wrapped into KISS frames.
+            Mirrors the Python reference kiss_tcp_server.
+  Russian:  KISS TNC поверх TCP/IP (сырые KISS-фреймы, порт по умолчанию 8023).
+ ==============================================================================
  */
 
 package com.dkxce.radio_bridge.net

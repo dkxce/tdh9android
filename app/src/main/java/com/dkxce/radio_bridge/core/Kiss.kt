@@ -1,7 +1,13 @@
 /*
- * KISS framing protocol (encapsulation/decapsulation).
- * Author: dkxce (c) https://github.com/dkxce/Tidradio-TD-H9
- * Version: v1.0.0
+ ==============================================================================
+  KISS framing protocol (encapsulation/decapsulation)
+  Author:  dkxce (c)  https://github.com/dkxce/Tidradio-TD-H9
+  Version: v1.1.0
+
+  English:  KISS protocol implementation (frame build/parse). Same constants
+            and escaping as the Python reference (FEND/FESC/TFEND/TFESC).
+  Russian:  Реализация KISS-протокола (упаковка/распаковка кадров TNC).
+ ==============================================================================
  */
 
 package com.dkxce.radio_bridge.core

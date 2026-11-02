@@ -1,7 +1,18 @@
 /*
- * AGWPE TCP/IP server (SV2AGW / Dire Wolf compatible, 36-byte framing).
- * Author: dkxce (c) https://github.com/dkxce/Tidradio-TD-H9
- * Version: v1.0.0
+ ==============================================================================
+  AGWPE TCP/IP server (SV2AGW / Dire Wolf compatible, 36-byte framing)
+  Author:  dkxce (c)  https://github.com/dkxce/Tidradio-TD-H9
+  Version: v1.1.0
+
+  English:  AGWPE TCP/IP compatible server. Format matches Dire Wolf
+            (port 8000). Handles version/port/caps requests and monitor frames.
+            Mirrors the Python reference agw_server.
+  Russian:  Сервер, совместимый с протоколом AGWPE TCP/IP (порт 8000).
+
+  AGWPE frame header (36 bytes):
+      portx(1) res(3) datakind(1) res(1) pid(1) res(1)
+      call_from(10) call_to(10) data_len(4 LE) user_reserved(4)
+ ==============================================================================
  */
 
 package com.dkxce.radio_bridge.net

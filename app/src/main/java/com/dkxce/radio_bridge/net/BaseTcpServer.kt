@@ -1,7 +1,15 @@
 /*
- * Common TCP server plumbing: accept loop, connection set, broadcast.
- * Author: dkxce (c) https://github.com/dkxce/Tidradio-TD-H9
- * Version: v1.0.0
+ ==============================================================================
+  Common TCP server plumbing (accept loop, connection set, broadcast)
+  Author:  dkxce (c)  https://github.com/dkxce/Tidradio-TD-H9
+  Version: v1.1.0
+
+  English:  Base class for the local TCP servers (Binary KISS / AGWPE /
+            APRS-IS). Hosts a listen socket, manages a client set and offers
+            a per-protocol client list and radio broadcast. Mirrors the Python
+            reference server architecture.
+  Russian:  Базовый класс локальных TCP-серверов (KISS/AGW/APRS-IS).
+ ==============================================================================
  */
 
 package com.dkxce.radio_bridge.net
