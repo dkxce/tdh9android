@@ -84,6 +84,9 @@ on the same Wi-Fi network.
 
 | Annex | Protocol | Port |
 |---|---|---|
+| **OruxMaps** | OruxMaps | APRS-IS | by setting |
+| **APRSDroid** | OruxMaps | Binary KISS (TNC (KISS), TCP/IP) / APRS-IS | as set up |
+| **APRSdroid 9M2PJU Mod** | OruxMaps | Binary KISS (TNC (KISS), TCP/IP) / APRS-IS | as set up |
 | **UISS**| AGWPE TCP/IP | 8000 |
 | **UI-View32** | AGWPE TCP/IP | 8000 |
 | **APRSIS32** | AGWPE (or Binary KISS) | 8000 / 8023 |
