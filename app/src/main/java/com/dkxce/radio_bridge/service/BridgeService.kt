@@ -214,15 +214,23 @@ class BridgeService : Service() {
     private fun handleRadioRx(raw: ByteArray) {
         val text = Ax25.toAprsText(raw)
         model.appendLog("[RX] $text")
-        // forward to every server (as raw bytes; each wraps its own protocol)
-        val n = currentClientCount()
-        if (n == 0) {
-            model.appendLog("[RX] no TCP clients connected, skip broadcast")
-            return
-        }
-        try { kissServer?.broadcastRadio(raw) } catch (e: Exception) { model.appendLog("[RX!] KISS broadcast: $e") }
-        try { agwServer?.broadcastRadio(raw) } catch (e: Exception) { model.appendLog("[RX!] AGW broadcast: $e") }
-        try { aprsServer?.broadcastRadio(raw) } catch (e: Exception) { model.appendLog("[RX!] APRS-IS broadcast: $e") }
+        // This runs on the main thread (BLE notify callback). Sending to TCP
+        // sockets must happen off the main thread or Android throws
+        // NetworkOnMainThreadException. Forward on a background thread.
+        Thread {
+            try {
+                val n = currentClientCount()
+                if (n == 0) {
+                    model.appendLog("[RX] no TCP clients connected, skip broadcast")
+                    return@Thread
+                }
+                try { kissServer?.broadcastRadio(raw) } catch (e: Exception) { model.appendLog("[RX!] KISS broadcast: $e") }
+                try { agwServer?.broadcastRadio(raw) } catch (e: Exception) { model.appendLog("[RX!] AGW broadcast: $e") }
+                try { aprsServer?.broadcastRadio(raw) } catch (e: Exception) { model.appendLog("[RX!] APRS-IS broadcast: $e") }
+            } catch (e: Exception) {
+                model.appendLog("[RX!] broadcast loop: $e")
+            }
+        }.start()
     }
 
     private fun sendToRadio(ax25Payload: ByteArray) {
