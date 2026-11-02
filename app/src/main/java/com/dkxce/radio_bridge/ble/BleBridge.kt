@@ -8,10 +8,15 @@ package com.dkxce.radio_bridge.ble
 
 import android.annotation.SuppressLint
 import android.bluetooth.*
+import android.bluetooth.le.ScanCallback
+import android.bluetooth.le.ScanFilter
+import android.bluetooth.le.ScanResult
+import android.bluetooth.le.ScanSettings
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import com.dkxce.radio_bridge.core.Kiss
+import com.dkxce.radio_bridge.core.KissFrameCallback
 import com.dkxce.radio_bridge.core.KissParser
 import java.util.UUID
 
@@ -154,7 +159,12 @@ class BleBridge(
     /** Write a ready-made KISS frame to the write characteristic. */
     fun sendKiss(kissFrame: ByteArray) {
         val ch = writeChar ?: return
-        val ok = gatt?.writeCharacteristic(ch, kissFrame, BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE)
+        val ok = if (android.os.Build.VERSION.SDK_INT >= 33) {
+            gatt?.writeCharacteristic(ch, kissFrame, BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE)
+        } else {
+            ch.writeType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+            gatt?.writeCharacteristic(ch)
+        }
         if (ok == null || !ok) events.onError("BLE write failed")
     }
 

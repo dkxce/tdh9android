@@ -1,11 +1,13 @@
-# RadioBridge · TNC через BLE на Android
+# Tidradio TD-H9 RadioBridge · TNC через BLE на Android
+
+[RU](README.md) | [EN](READEME.en.md) | [Releases](https://github.com/dkxce/tdh9android/releases)
 
 Мост между рацией **TIDRadio TD-H9** (BLE GATT сервис Odmaster `af00`) и сетью
 **TCP/IP** с тремя протоколами. Рация выступает как аппаратный KISS-TNC: телефон
 подключается по BLE и обменивается с рацией KISS/AX.25-кадрами, а приложение
 поднимает локальные TCP-серверы, к которым подключаются APRS-приложения.
 
-**Автор:** dkxce (c) https://github.com/dkxce/Tidradio-TD-H9 · **Версия:** 1.0.0
+**Версия:** 1.0.0
 
 ## Возможности
 
@@ -57,9 +59,9 @@ Android Studio.
 | **UISS** | AGWPE TCP/IP | 8000 |
 | **UI-View32** | AGWPE TCP/IP | 8000 |
 | **APRSIS32** | AGWPE (или Binary KISS) | 8000 / 8023 |
-| **KMZViewer** (github.com/dkxce/KMZViewer) | KISS / AGW / APRS-IS | по настройке |
-| **APRSWin** (github.com/dkxce/APRSWin) | Binary KISS / AGW | 8023 / 8000 |
-| **APRSAir** (github.com/dkxce/APRSAIR) | KISS / AGW / APRS-IS | по настройке |
+| [**KMZViewer**](https://github.com/dkxce/KMZViewer) | KISS / AGW / APRS-IS | по настройке |
+| [**APRSWin**](https://https://github.com/dkxce/APRSWin) | Binary KISS / AGW | 8023 / 8000 |
+| [**APRSAir**](https://github.com/dkxce/APRSAIR) | KISS / AGW / APRS-IS | по настройке |
 
 > Программы, умеющие **AGWPE** — ставьте режим AGW (8000); ожидающие **KISS-TNC**
 > по TCP — Binary KISS (8023); сетевые APRS-IS — APRS-IS (14580).
@@ -86,9 +88,10 @@ app/src/main/java/com/dkxce/radio_bridge/
 ## Замечания
 
 - **Ядро (BLE + KISS + AX.25 + три сервера) полностью перенесено из
-  Python-проекта** `tidradio_kiss` (см. в корне репозитория).
-- Приложение не собирает/не тестировалось в этом окружении (нет Android SDK);
-  собрано как проект Android Studio. Проверьте/доправьте версии Gradle-плагинов
-  под свою студию.
+  Python-проекта** [dkxce/Tidradio-TD-H9](https://github.com/dkxce/Tidradio-TD-H9)
 - Foreground-service типа `connectedDevice` требует на Android 14+ разрешение
   `FOREGROUND_SERVICE_CONNECTED_DEVICE` (заявлено в манифесте).
+  
+---
+
+**Автор:** dkxce (c) https://github.com/dkxce/Tidradio-TD-H9 · 

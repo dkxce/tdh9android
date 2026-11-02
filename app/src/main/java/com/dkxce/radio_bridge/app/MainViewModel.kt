@@ -20,7 +20,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val model = AppModel(application.applicationContext)
 
-    val ui: StateFlow<UiState> = model.ui.asStateFlow()
+    val ui: StateFlow<UiState> = model.ui
 
     fun saveConfig(cfg: BridgeConfig) = model.saveConfig(cfg)
     fun setScanning(v: Boolean) = model.setScanning(v)

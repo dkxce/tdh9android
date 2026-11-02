@@ -7,6 +7,7 @@
 package com.dkxce.radio_bridge.net
 
 import com.dkxce.radio_bridge.core.Kiss
+import com.dkxce.radio_bridge.core.KissFrameCallback
 import com.dkxce.radio_bridge.core.KissParser
 import java.io.IOException
 import java.io.InputStream

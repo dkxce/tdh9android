@@ -138,18 +138,15 @@ class AgwTcpServer(
 
     private fun sendFrame(c: TcpClient, kind: Int, data: ByteArray) {
         val hdr = ByteBuffer.allocate(headerSize).order(ByteOrder.LITTLE_ENDIAN)
-        hdr.put(0)        // port
-        hdr.put(0)        // res
-        hdr.put(0)
-        hdr.put(0)
+        for (i in 0 until 8) hdr.put(0x00.toByte())
         hdr.put(kind.toByte())
-        hdr.put(0)
+        hdr.put(0x00.toByte())
         hdr.put(0xF0.toByte()) // pid
-        hdr.put(0)
-        for (i in 0 until 10) hdr.put(0)     // call_from padding
-        for (i in 0 until 10) hdr.put(0)     // call_to padding
+        hdr.put(0x00.toByte())
+        for (i in 0 until 10) hdr.put(0x00.toByte())     // call_from padding
+        for (i in 0 until 10) hdr.put(0x00.toByte())     // call_to padding
         hdr.putInt(data.size)
-        hdr.put(0); hdr.put(0); hdr.put(0); hdr.put(0)
+        for (i in 0 until 4) hdr.put(0x00.toByte())
         try {
             val out: OutputStream = c.socket.getOutputStream()
             out.write(hdr.array())
@@ -160,15 +157,15 @@ class AgwTcpServer(
 
     private fun portCaps(): ByteArray {
         // 8 bytes baud/traffic/txdelay/txtail/persist/slot/maxframe/conn + uint32
-        val b = ByteBuffer.allocate(12).order(ByteOrder.LITTLE_ENDIAN)
-        b.put(3)   // baud code 1200
-        b.put(0)   // traffic
-        b.put(50)  // txdelay
-        b.put(1)   // txtail
-        b.put(64)  // persist
-        b.put(50)  // slot
-        b.put(230) // maxframe
-        b.put(0)   // conns
+        val b = java.nio.ByteBuffer.allocate(12).order(ByteOrder.LITTLE_ENDIAN)
+        b.put(3.toByte())   // baud code 1200
+        b.put(0.toByte())   // traffic
+        b.put(50.toByte())  // txdelay
+        b.put(1.toByte())   // txtail
+        b.put(64.toByte())  // persist
+        b.put(50.toByte())  // slot
+        b.put((230).toByte()) // maxframe
+        b.put(0.toByte())   // conns
         b.putInt(0)
         return b.array()
     }
@@ -195,15 +192,15 @@ class AgwTcpServer(
             try {
                 val out: OutputStream = c.socket.getOutputStream()
                 val hdr = ByteBuffer.allocate(headerSize).order(ByteOrder.LITTLE_ENDIAN)
-                hdr.put(0); hdr.put(0); hdr.put(0); hdr.put(0)
+                for (i in 0 until 4) hdr.put(0x00.toByte())
                 hdr.put('U'.code.toByte()) // monitor unproto
-                hdr.put(0)
+                hdr.put(0x00.toByte())
                 hdr.put(0xF0.toByte())
-                hdr.put(0)
-                for (i in 0 until 10) hdr.put(0)
-                for (i in 0 until 10) hdr.put(0)
+                hdr.put(0x00.toByte())
+                for (i in 0 until 10) hdr.put(0x00.toByte())
+                for (i in 0 until 10) hdr.put(0x00.toByte())
                 hdr.putInt(payload.size)
-                hdr.put(0); hdr.put(0); hdr.put(0); hdr.put(0)
+                for (i in 0 until 4) hdr.put(0x00.toByte())
                 out.write(hdr.array())
                 out.write(payload)
                 out.flush()

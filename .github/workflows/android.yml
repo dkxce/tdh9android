@@ -26,6 +26,8 @@ jobs:
     # or a committed gradle-wrapper.jar being present.
     - name: Set up Gradle
       uses: gradle/actions/setup-gradle@v4
+      with:
+        gradle-version: '8.9'
 
     - name: Build with Gradle
       run: gradle assembleDebug
