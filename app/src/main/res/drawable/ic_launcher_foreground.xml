@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Radio / TNC badge: a simple antenna + bars glyph -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M30,30 L34,30 L34,78 L30,78 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M38,38 L42,38 L42,78 L38,78 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M30,70 A 12,12 0 0,0 42,58 L38,58 A 8,8 0 0,1 30,66 Z" />
+    <path
+        android:fillColor="#FFFFC107"
+        android:pathData="M72,30 A 26,26 0 0,1 72,82 A 26,26 0 0,1 72,30 Z M66,40 A 16,16 0 0,0 66,72 A 16,16 0 0,0 66,40 Z" />
+    <path
+        android:fillColor="#FFFFA000"
+        android:pathData="M72,50 A 6,6 0 0,1 72,62 A 6,6 0 0,1 72,50 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M60,46 L52,40 L52,52 Z M84,46 L92,40 L92,52 Z" />
+</vector>

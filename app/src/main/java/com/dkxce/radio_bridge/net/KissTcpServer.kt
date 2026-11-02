@@ -1,0 +1,59 @@
+/*
+ * Binary KISS over TCP server.
+ * Author: dkxce (c) https://github.com/dkxce/Tidradio-TD-H9
+ * Version: v1.0.0
+ */
+
+package com.dkxce.radio_bridge.net
+
+import com.dkxce.radio_bridge.core.Kiss
+import com.dkxce.radio_bridge.core.KissParser
+import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
+
+/**
+ * Presents the radio as a raw KISS TNC over TCP (binary framing), exactly
+ * like a serial TNC over the network. Clients send KISS frames to TX and
+ * receive KISS frames wrapped radio packets.
+ *
+ * The outbound callback [onTx] receives the decapsulated AX.25 payload to
+ * transmit over BLE.
+ */
+class KissTcpServer(
+    port: Int,
+    private val onTx: (ByteArray) -> Unit,
+    onClients: () -> Unit = {},
+    private val onLog: (String) -> Unit = {},
+) : BaseTcpServer(port, onClients), FrameBroadcaster {
+
+    override fun handleClient(c: TcpClient) {
+        val parser = KissParser(KissFrameCallback { port, command, payload ->
+            if (command == Kiss.CMD_DATA && payload.isNotEmpty()) onTx(payload)
+        })
+        try {
+            val input: InputStream = c.socket.getInputStream()
+            val buf = ByteArray(4096)
+            while (true) {
+                val n = input.read(buf)
+                if (n < 0) break
+                parser.feed(buf.copyOfRange(0, n))
+            }
+        } catch (_: IOException) {
+        } catch (_: Exception) {
+        } finally {
+            removeClient(c)
+        }
+    }
+
+    override fun broadcastRadio(raw: ByteArray) {
+        val frame = Kiss.frame(raw)
+        for (c in clients) {
+            try {
+                val out: OutputStream = c.socket.getOutputStream()
+                out.write(frame)
+                out.flush()
+            } catch (_: Exception) { }
+        }
+    }
+}
