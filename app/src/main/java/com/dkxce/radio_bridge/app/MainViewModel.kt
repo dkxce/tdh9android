@@ -24,6 +24,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun saveConfig(cfg: BridgeConfig) = model.saveConfig(cfg)
     fun setScanning(v: Boolean) = model.setScanning(v)
+    fun appendLog(text: String) = model.appendLog(text)
     fun clearLog() = model.clearLog()
     fun loadConfig() = model.loadConfig()
 }
