@@ -110,8 +110,7 @@ Android Studio.
 
 ## 8. Скриншоты
 
-<img src="images/appimage1.png"/>    
-<img src="images/appimage2.png"/>    
+<img src="images/appimage1.jpg"/>      
 
 ---
 
