@@ -34,7 +34,7 @@ fun RadioBridgeApp(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("RadioBridge · TNC over BLE") })
+            TopAppBar(title = { Text("TDH9RadioBridge · TNC over BLE") })
         },
         bottomBar = {
             NavigationBar {

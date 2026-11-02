@@ -6,6 +6,7 @@
 
 package com.dkxce.radio_bridge.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -117,11 +118,11 @@ fun ServerTab(
         var expanded by remember { mutableStateOf(false) }
         Box {
             OutlinedButton(onClick = { expanded = true }) {
-                Text("Режим: ${mode.name}")
+                Text("Режим: ${mode.label}")
             }
             DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                 ServerMode.entries.forEach { m ->
-                    DropdownMenuItem(text = { Text(m.name) },
+                    DropdownMenuItem(text = { Text(m.label) },
                         onClick = { mode = m; expanded = false })
                 }
             }
@@ -145,7 +146,7 @@ fun ServerTab(
         }
 
         if (state.serverRunning) {
-            Text("Сервер работает: ${state.serverMode} :${state.port} · клиентов: ${state.clients}",
+            Text("Сервер работает: ${state.serverMode.label} :${state.port} · клиентов: ${state.clients}",
                 color = MaterialTheme.colorScheme.primary)
             if (state.clientsList.isNotEmpty()) {
                 Text("Подключённые клиенты:", style = MaterialTheme.typography.labelMedium)
@@ -214,20 +215,36 @@ fun LogTab(state: UiState, onClearLog: () -> Unit) {
 /** About tab: program author and info. / О программе. */
 @Composable
 fun AboutTab() {
+    val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+    fun link(url: String, label: String) {
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier
+                .clickable { uriHandler.openUri(url) },
+        )
+    }
     Column(
         Modifier.fillMaxSize().padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text("RadioBridge", style = MaterialTheme.typography.headlineMedium)
+        Text("TDH9RadioBridge", style = MaterialTheme.typography.headlineMedium)
         Text("BLE KISS TNC bridge: TIDRadio TD-H9 ⇄ TCP/IP (KISS / AGWPE / APRS-IS)",
             style = MaterialTheme.typography.bodyMedium)
+        Text("Версия: v1.1.0", style = MaterialTheme.typography.bodySmall)
         Spacer(Modifier.height(8.dp))
         Text("Автор: dkxce", style = MaterialTheme.typography.titleMedium)
-        Text("GitHub: https://github.com/dkxce", style = MaterialTheme.typography.bodyMedium)
-        Text("Проект: https://github.com/dkxce/Tidradio-TD-H9",
-            style = MaterialTheme.typography.bodyMedium)
+        link("https://github.com/dkxce", "GitHub: https://github.com/dkxce")
+        Spacer(Modifier.height(4.dp))
+        Text("Проект (Android):", style = MaterialTheme.typography.bodySmall)
+        link("https://github.com/dkxce/tdh9android",
+            "https://github.com/dkxce/tdh9android")
+        Spacer(Modifier.height(4.dp))
+        Text("Десктоп-версия (Python):", style = MaterialTheme.typography.bodySmall)
+        link("https://github.com/dkxce/Tidradio-TD-H9",
+            "https://github.com/dkxce/Tidradio-TD-H9")
         Spacer(Modifier.height(8.dp))
-        Text("Версия: 1.0.0", style = MaterialTheme.typography.bodySmall)
         Text("Мост между рацией TIDRadio TD-H9 (BLE-сервис APRS 0000af00) и внешними "
             + "APRS-приложениями по локальным TCP-серверам.",
             style = MaterialTheme.typography.bodySmall)

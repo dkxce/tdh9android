@@ -26,7 +26,7 @@ class KissTcpServer(
     private val onTx: (ByteArray) -> Unit,
     onClients: () -> Unit = {},
     private val onLog: (String) -> Unit = {},
-) : BaseTcpServer(port, onClients), FrameBroadcaster {
+) : BaseTcpServer(port, onClients, "kiss"), FrameBroadcaster {
 
     override fun handleClient(c: TcpClient) {
         val parser = KissParser(KissFrameCallback { port, command, payload ->

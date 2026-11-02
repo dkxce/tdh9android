@@ -27,6 +27,7 @@ class TcpClient(val socket: Socket) {
 abstract class BaseTcpServer(
     val port: Int,
     private val onClientsChange: () -> Unit = {},
+    private val protocol: String = "",   // "kiss" / "agw" / "aprs"
 ) {
     private var serverSocket: ServerSocket? = null
     private val acceptThread = AtomicBoolean(false)
@@ -80,9 +81,12 @@ abstract class BaseTcpServer(
 
     val clientCount: Int get() = clients.size
 
-    /** List of connected clients as "ip:port" strings. */
+    /** List of connected clients as "protocol://ip:port/tx". APRS-IS overrides this
+     * to reflect verified ("/tx") / unverified ("/rx") state. */
     fun clientList(): List<String> {
-        return clients.map { "${it.address}:${it.port}" }
+        return clients.map { c ->
+            "$protocol://${c.address}:${c.port}/tx"
+        }
     }
 
     protected fun onError(msg: String) {}

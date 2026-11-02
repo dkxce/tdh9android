@@ -27,7 +27,7 @@ class AgwTcpServer(
     private val onTx: (ByteArray) -> Unit,
     onClients: () -> Unit = {},
     private val onLog: (String) -> Unit = {},
-) : BaseTcpServer(port, onClients), FrameBroadcaster {
+) : BaseTcpServer(port, onClients, "agw"), FrameBroadcaster {
 
     private data class ClientState(val c: TcpClient, var monitor: Boolean = false)
 

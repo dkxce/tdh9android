@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">RadioBridge</string>
-    <string name="service_channel_name">RadioBridge bridge service</string>
-    <string name="service_notification_title">RadioBridge active</string>
+    <string name="app_name">TDH9RadioBridge</string>
+    <string name="service_channel_name">TDH9RadioBridge bridge service</string>
+    <string name="service_notification_title">TDH9RadioBridge active</string>
     <string name="service_notification_text">BLE ⇄ TCP bridge is running</string>
 </resources>

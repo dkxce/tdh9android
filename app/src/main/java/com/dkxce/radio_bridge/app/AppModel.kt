@@ -14,7 +14,11 @@ import kotlinx.coroutines.flow.asStateFlow
 
 /** Which protocol server to run. This is a LOCAL TCP server (the radio is a
  * KISS TNC); there is no outbound IGate client, so no APRS-IS login settings. */
-enum class ServerMode { KISS, AGW, APRS_IS }
+enum class ServerMode(val label: String) {
+    KISS("Binary KISS"),
+    AGW("AGW (AGWPE)"),
+    APRS_IS("APRS-IS"),
+}
 
 /** Local bridge server configuration. */
 data class BridgeConfig(

@@ -24,10 +24,9 @@ class AprsIsTcpServer(
     private val onTx: (ByteArray) -> Unit,
     onClients: () -> Unit = {},
     private val onLog: (String) -> Unit = {},
-) : BaseTcpServer(port, onClients), FrameBroadcaster {
+) : BaseTcpServer(port, onClients, "aprs"), FrameBroadcaster {
 
-    private data class Peer(val ver: Boolean = false)
-    private val peers = java.util.concurrent.ConcurrentHashMap<TcpClient, Boolean>()
+    private val peers = java.util.concurrent.ConcurrentHashMap<TcpClient, Pair<String, Boolean>>()
 
     private val SERVER_ID = "TIDRADIO-BRIDGE"
 
@@ -65,14 +64,14 @@ class AprsIsTcpServer(
             }
             val passCode = passStr.toIntOrNull() ?: 0
             val ok = (passCode != 0) && (computePasscode(call) == passCode)
-            peers[c] = ok
+            peers[c] = call to ok
             sendLine(out, "# logresp $call ${if (ok) "verified" else "unverified"}, server $SERVER_ID")
             if (ok) onTx("$call>APRS:$SERVER_ID online".toByteArray(Charsets.UTF_8))
             return
         }
 
         // Plain APRS data line from a verified (or read-only) client -> TX.
-        if (peers[c] == true || true) {
+        if (peers[c] != null) {
             // comments never go to the radio
             if (!text.startsWith("#") && text.isNotEmpty()) {
                 onTx(text.toByteArray(Charsets.UTF_8))
@@ -85,6 +84,16 @@ class AprsIsTcpServer(
             out.write((s + "\r\n").toByteArray(Charsets.UTF_8))
             out.flush()
         } catch (_: Exception) { }
+    }
+
+    /** APRS-IS client list: "aprs://CALLSIGN@ip:port/tx" if verified,
+     * "aprs://CALLSIGN@ip:port/rx" if unverified (like the Python version). */
+    override fun clientList(): List<String> {
+        return clients.map { c ->
+            val (call, verified) = peers[c] ?: ("" to false)
+            val dir = if (verified) "tx" else "rx"
+            "aprs://$call@${c.address}:${c.port}/$dir"
+        }
     }
 
     override fun broadcastRadio(raw: ByteArray) {
