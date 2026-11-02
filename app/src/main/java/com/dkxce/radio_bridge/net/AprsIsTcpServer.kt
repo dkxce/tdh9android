@@ -26,8 +26,6 @@ class AprsIsTcpServer(
     private val onLog: (String) -> Unit = {},
 ) : BaseTcpServer(port, onClients, "aprs"), FrameBroadcaster {
 
-    private val peers = java.util.concurrent.ConcurrentHashMap<TcpClient, Pair<String, Boolean>>()
-
     private val SERVER_ID = "TIDRADIO-BRIDGE"
 
     override fun handleClient(c: TcpClient) {
@@ -44,7 +42,6 @@ class AprsIsTcpServer(
         } catch (_: IOException) {
         } catch (_: Exception) {
         } finally {
-            peers.remove(c)
             removeClient(c)
         }
     }
@@ -64,7 +61,9 @@ class AprsIsTcpServer(
             }
             val passCode = passStr.toIntOrNull() ?: 0
             val ok = (passCode != 0) && (computePasscode(call) == passCode)
-            peers[c] = call to ok
+            c.callsign = call
+            c.verified = ok
+            onLog?.invoke("[APRS] login: user=$call pass=$passCode verified=$ok")
             notifyClientsChanged() // refresh client list (callsign + tx/rx) in UI
             sendLine(out, "# logresp $call ${if (ok) "verified" else "unverified"}, server $SERVER_ID")
             if (ok) onTx("$call>APRS:$SERVER_ID online".toByteArray(Charsets.UTF_8))
@@ -73,16 +72,16 @@ class AprsIsTcpServer(
 
         // If the client never sent "user ..." login, derive the callsign from
         // its first APRS packet ("CALL>DST,...") so the client list shows it.
-        if (peers[c] == null && text.isNotEmpty() && !text.startsWith("#") && !text.startsWith("user")) {
+        if (c.callsign.isEmpty() && text.isNotEmpty() && !text.startsWith("#") && !text.startsWith("user")) {
             val call = text.substringBefore('>').trim()
             if (call.isNotEmpty()) {
-                peers[c] = call to false
+                c.callsign = call
                 notifyClientsChanged()
             }
         }
 
-        // Plain APRS data line from a verified (or read-only) client -> TX.
-        if (peers[c] != null) {
+        // Plain APRS data line from a client that logged in or sent data.
+        if (c.callsign.isNotEmpty()) {
             // comments never go to the radio
             if (!text.startsWith("#") && text.isNotEmpty()) {
                 onTx(text.toByteArray(Charsets.UTF_8))
@@ -101,9 +100,8 @@ class AprsIsTcpServer(
      * "aprs://CALLSIGN@ip:port/rx" if unverified (like the Python version). */
     override fun clientList(): List<String> {
         return clients.map { c ->
-            val (call, verified) = peers[c] ?: ("" to false)
-            val dir = if (verified) "tx" else "rx"
-            "aprs://$call@${c.address}:${c.port}/$dir"
+            val dir = if (c.verified) "tx" else "rx"
+            "aprs://${c.callsign}@${c.address}:${c.port}/$dir"
         }
     }
 

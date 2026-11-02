@@ -18,6 +18,9 @@ import java.util.concurrent.atomic.AtomicBoolean
 class TcpClient(val socket: Socket) {
     val address: String get() = socket.inetAddress?.hostAddress ?: "?"
     val port: Int get() = socket.port
+    /** Optional protocol-specific metadata (APRS-IS callsign / verified). */
+    @Volatile var callsign: String = ""
+    @Volatile var verified: Boolean = false
 }
 
 /**
