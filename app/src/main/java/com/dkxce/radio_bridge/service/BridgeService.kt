@@ -69,6 +69,13 @@ class BridgeService : Service() {
                 ensureBle().stopScanIfActive()
                 ensureBle().startScan()
                 model.setScanning(true)
+                // Auto-stop after 12 s so the UI never stays stuck scanning.
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    if (model.ui.value.scanning) {
+                        ensureBle().stopScanIfActive()
+                        model.setScanning(false)
+                    }
+                }, 12000L)
             }
             ACTION_STOP_SCAN -> {
                 ensureBle().stopScan()
@@ -83,6 +90,7 @@ class BridgeService : Service() {
                 intent.getStringExtra(EXTRA_MODE)?.let { runCatching { ServerMode.valueOf(it) }.getOrNull() },
                 intent.getIntExtra(EXTRA_PORT, -1),
             )
+            ACTION_STOP_SERVER -> stopServers()
             ACTION_SEND_RADIO -> {
                 val data = intent.getByteArrayExtra(EXTRA_KISS)
                 if (data != null) sendToRadio(data)
@@ -106,7 +114,14 @@ class BridgeService : Service() {
             model.setConnected(null, "")
             model.appendLog("[BLE] Disconnected")
         }
-        override fun onError(msg: String) { model.appendLog("[BLE!] $msg") }
+        override fun onError(msg: String) {
+            model.appendLog("[BLE!] $msg")
+            // If an error occurs during a scan, make sure the UI does not stay
+            // stuck on "Scanning..." forever.
+            if (model.ui.value.scanning) {
+                model.setScanning(false)
+            }
+        }
         override fun onServices(summary: List<String>, writeUuid: String?, notifyUuid: String?) {
             model.setServices(summary)
             model.appendLog("[BLE] services:")
@@ -218,6 +233,7 @@ class BridgeService : Service() {
         const val ACTION_CONNECT = "com.dkxce.radio_bridge.ACTION_CONNECT"
         const val ACTION_DISCONNECT = "com.dkxce.radio_bridge.ACTION_DISCONNECT"
         const val ACTION_START_SERVER = "com.dkxce.radio_bridge.ACTION_START_SERVER"
+        const val ACTION_STOP_SERVER = "com.dkxce.radio_bridge.ACTION_STOP_SERVER"
         const val ACTION_SEND_RADIO = "com.dkxce.radio_bridge.ACTION_SEND_RADIO"
         const val EXTRA_ADDR = "addr"
         const val EXTRA_KISS = "kiss"

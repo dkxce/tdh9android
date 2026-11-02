@@ -76,10 +76,22 @@ class BleBridge(
     val isConnected: Boolean get() = gatt?.services?.isNotEmpty() == true
 
     fun startScan() {
-        val a = adapter() ?: return
-        scanner = a.bluetoothLeScanner
-        // Android 12+: use proper scan callback via registerStaticCallback; for
-        // API <31 use the deprecated beginScan path.
+        val a = adapter()
+        if (a == null) {
+            events.onError("Bluetooth not supported on this device")
+            return
+        }
+        if (!a.isEnabled) {
+            events.onError("Bluetooth is OFF. Enable it to scan.")
+            return
+        }
+        val scanner = try {
+            a.bluetoothLeScanner
+        } catch (e: Exception) {
+            events.onError("BLE scanner unavailable: ${e.message}")
+            return
+        }
+        this.scanner = scanner
         if (android.os.Build.VERSION.SDK_INT >= 31) {
             androidxStartScan(a)
         } else {

@@ -18,45 +18,42 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 1. Устанавливаем бесплатную и надежную библиотеку перевода
-      - name: Install Python translation library
-        run: pip install deep-translator
+      # 1. Устанавливаем полностью офлайновую библиотеку перевода
+      - name: Install Argos Translate
+        run: |
+          pip install argostranslate
 
-      # 2. Запускаем простой скрипт, который считывает README.md, переводит его и сохраняет в README.en.md
-      - name: Translate README via Python
+      # 2. Скачиваем языковую модель RU -> EN и выполняем перевод локально
+      - name: Translate README via Argos (Offline)
         run: |
           python -c "
-          import os
-          from deep_translator import GoogleTranslator
+          import argostranslate.package
+          import argostranslate.translate
 
-          # Считываем исходный файл
+          # Обновляем индекс пакетов и скачиваем модель с русского на английский
+          argostranslate.package.update_package_index()
+          available_packages = argostranslate.package.get_available_packages()
+          package_to_install = next(
+              filter(
+                  lambda x: x.from_code == 'ru' and x.to_code == 'en',
+                  available_packages
+              )
+          )
+          argostranslate.package.install_from_path(package_to_install.download())
+
+          # Считываем русский README
           with open('README.md', 'r', encoding='utf-8') as f:
               text = f.read()
 
-          # GoogleTranslator бесплатно переводит тексты до 5000 символов за один запрос.
-          # Чтобы не упасть на больших файлах, переводим текст по абзацам.
-          paragraphs = text.split('\n\n')
-          translated_paragraphs = []
-          
-          translator = GoogleTranslator(source='ru', target='en')
-          
-          for p in paragraphs:
-              if p.strip():
-                  try:
-                      # Переводим абзац
-                      translated_paragraphs.append(translator.translate(p))
-                  except Exception as e:
-                      # Если строка служебная или произошел сбой — оставляем как есть
-                      translated_paragraphs.append(p)
-              else:
-                  translated_paragraphs.append('')
+          # Локально переводим весь текст (без HTTP запросов в интернет)
+          translated_text = argostranslate.translate.translate(text, 'ru', 'en')
 
-          # Сохраняем результат в английскую версию
+          # Записываем результат
           with open('README.en.md', 'w', encoding='utf-8') as f:
-              f.write('\n\n'.join(translated_paragraphs))
+              f.write(translated_text)
           "
 
-      # 3. Сохраняем результат в репозиторий
+      # 3. Сохраняем готовый файл в репозиторий
       - name: Commit & Push changes
         run: |
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"

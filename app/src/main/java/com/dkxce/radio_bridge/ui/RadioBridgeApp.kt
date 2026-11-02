@@ -25,6 +25,7 @@ fun RadioBridgeApp(
     onConnect: (String) -> Unit,
     onDisconnect: () -> Unit,
     onStartServer: (BridgeConfig) -> Unit,
+    onStopServer: () -> Unit,
     onSaveConfig: (BridgeConfig) -> Unit,
     onClearLog: () -> Unit,
 ) {
@@ -51,10 +52,7 @@ fun RadioBridgeApp(
         Box(Modifier.padding(padding).fillMaxSize()) {
             when (tab) {
                 0 -> DeviceTab(state, isConnected, onScan, onConnect, onDisconnect)
-                1 -> ServerTab(state) { c ->
-                        onSaveConfig(c)
-                        onStartServer(c)
-                    }
+                1 -> ServerTab(state, onStartServer, onStopServer, onSaveConfig)
                 2 -> LogTab(state, onClearLog)
                 3 -> AboutTab()
             }

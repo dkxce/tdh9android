@@ -44,7 +44,11 @@ class MainActivity : ComponentActivity() {
                         if (hasBlePermissions()) {
                             viewModel.setScanning(true)
                             startService(BridgeService.ACTION_SCAN)
-                        } else ensurePermissions()
+                        } else {
+                            viewModel.clearLog()
+                            viewModel.appendLog("[BLE] Need Bluetooth/location permissions to scan")
+                            ensurePermissions()
+                        }
                     },
                     onConnect = { addr ->
                         startService(BridgeService.ACTION_CONNECT, addr)
@@ -56,6 +60,9 @@ class MainActivity : ComponentActivity() {
                             cfg.serverMode.name,
                             cfg.port,
                         )
+                    },
+                    onStopServer = {
+                        startService(BridgeService.ACTION_STOP_SERVER)
                     },
                     onSaveConfig = viewModel::saveConfig,
                     onClearLog = viewModel::clearLog,
@@ -86,27 +93,23 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun hasBlePermissions(): Boolean {
-        val perms = requiredPermissions()
+        val perms = runtimePermissions()
         return perms.all { ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED }
     }
 
-    private fun requiredPermissions(): Array<String> = buildList {
+    private fun runtimePermissions(): Array<String> = buildList {
         if (Build.VERSION.SDK_INT >= 31) {
             add(Manifest.permission.BLUETOOTH_SCAN)
             add(Manifest.permission.BLUETOOTH_CONNECT)
         } else {
             add(Manifest.permission.ACCESS_FINE_LOCATION)
             add(Manifest.permission.ACCESS_COARSE_LOCATION)
-            add(Manifest.permission.BLUETOOTH)
-            add(Manifest.permission.BLUETOOTH_ADMIN)
         }
         if (Build.VERSION.SDK_INT >= 33) add(Manifest.permission.POST_NOTIFICATIONS)
-        add(Manifest.permission.FOREGROUND_SERVICE)
-        add(Manifest.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE)
     }.toTypedArray()
 
     private fun ensurePermissions() {
-        val needed = requiredPermissions().filter {
+        val needed = runtimePermissions().filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }
         if (needed.isNotEmpty()) permissionLauncher.launch(needed.toTypedArray())

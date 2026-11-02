@@ -13,6 +13,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BluetoothSearching
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -84,7 +86,9 @@ fun DeviceTab(
 @Composable
 fun ServerTab(
     state: UiState,
-    onApply: (BridgeConfig) -> Unit,
+    onStartServer: (BridgeConfig) -> Unit,
+    onStopServer: () -> Unit,
+    onSaveConfig: (BridgeConfig) -> Unit,
 ) {
     var mode by remember(state.serverMode) { mutableStateOf(state.serverMode) }
     var port by remember(state.port) { mutableStateOf(state.port.toString()) }
@@ -109,18 +113,50 @@ fun ServerTab(
                 keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
 
         Button(onClick = {
-            onApply(BridgeConfig(
+            val cfg = BridgeConfig(
                 serverMode = mode,
                 port = port.toIntOrNull() ?: 8023,
-            ))
+            )
+            onSaveConfig(cfg)
+            onStartServer(cfg)
         }, modifier = Modifier.fillMaxWidth()) {
-            Icon(Icons.Filled.Settings, null)
+            Icon(Icons.Filled.PlayArrow, null)
             Spacer(Modifier.width(6.dp))
-            Text("Применить и запустить сервер (${if (state.serverRunning) "уже работает" else "старт"})")
+            Text("Запустить сервер")
         }
+
         if (state.serverRunning) {
             Text("Сервер работает: ${state.serverMode} :${state.port} · клиентов: ${state.clients}",
                 color = MaterialTheme.colorScheme.primary)
+            Button(onClick = onStopServer,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error),
+                modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Filled.Stop, null)
+                Spacer(Modifier.width(6.dp))
+                Text("Остановить сервер")
+            }
+        } else {
+            Text("Сервер остановлен", color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium)
+        }
+
+        // Local addresses for Wi-Fi/LAN clients to connect to.
+        Text("Локальные адреса сервера:", style = MaterialTheme.typography.labelMedium)
+        val ips = com.dkxce.radio_bridge.net.LocalAddresses.ipv4()
+        if (ips.isEmpty()) {
+            Text("(нет активной сети / IP не определён)",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else {
+            ips.forEach { ip ->
+                Text("$ip:${port.toIntOrNull() ?: state.port}",
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                    style = MaterialTheme.typography.bodySmall)
+            }
+            Text("Подключитесь к одному из адресов с другого устройства в той же сети.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
