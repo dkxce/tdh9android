@@ -55,6 +55,8 @@ class AprsIsTcpServer(
     }
 
     private fun handleLine(c: TcpClient, out: OutputStream, text: String) {
+        // On every meaningful input from the client, refresh the client list so
+        // a late login/derived callsign is always reflected in the UI.
         val parts = text.split(" ")
         if (parts.isNotEmpty() && parts[0].equals("user", true)) {
             // user CALL pass PASSCODE vers ...
@@ -109,7 +111,9 @@ class AprsIsTcpServer(
     override fun clientList(): List<String> {
         return clients.map { c ->
             val dir = if (c.verified) "tx" else "rx"
-            "aprs://${c.callsign}@${c.address}:${c.port}/$dir"
+            val entry = "aprs://${c.callsign}@${c.address}:${c.port}/$dir"
+            onLog?.invoke("[APRS] clientList: call='${c.callsign}' verified=${c.verified} -> $entry")
+            entry
         }
     }
 
