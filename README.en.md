@@ -3,7 +3,7 @@
 [RU](README.md) | [EN](README.en.md) | [Releases](https://github.com/dkxce/tdh9android/releases)
 
 Bridge between **TIDRadio TD-H9** (BLE GATT service Odmaster 'af00') and the network
-**TCP/IP** with three protocols. The radio acts as a hardware KISS-TNC: phone
+**TCP/IP with three protocols. The radio acts as a hardware KISS-TNC: phone
 connects via BLE and exchanges with the KISS / AX.25-frame radio, and the application
 Raises local TCP servers to which APRS applications are connected.
 
@@ -11,7 +11,7 @@ Raises local TCP servers to which APRS applications are connected.
 
 ## Opportunities
 
-- **BLE connection** to the radio as to KISS-TNC (service `0000af00`, write `af01`,
+- **BLE connection** to the radio as a KISS-TNC (service `0000af00`, write `af01`,
 notify `af02`; spare UUID `ff02`/`ffe2` and `ff01`/`ffe1`.
 **Three TCP servers** (one at a time, mode selection):
 **Binary KISS** - port 8023 (raw KISS frames, as a serial TNC over the network);
@@ -28,15 +28,32 @@ Android Studio (Ladybug 2024.2.1+ is recommended).
 Android 8.0+ (API 26)
 - TIDRadio TD-H9 radio or firmware with APRS BLE service.
 
+### Minimum requirements for Android devices
+
+- **OS:** Android **8.0 (API 26)** and higher.
+**RAM/CPU:** 1 GB of RAM and single-core CPU (the application works on weak devices as well).
+**Bluetooth:** Required module **Bluetooth Low Energy (BLE/Bluetooth 4.0+)**
+**Enabled geolocation service (GPS/"Location")** - mandatory
+BLE-scan on Android <12 (platform ban, without it there is no radio).
+**Wi-Fi/LAN** – required to connect external APRS clients to TCP servers
+(Telephone and PC on the same network)
+**Run permissions:** Bluetooth, Geolocation; Android 13+ notifications.
+Optional: Storage (for logs / settings) - not critical, data is stored
+locally in the application memory.
+
+> **Compatibility check:** Minimum specs: Android 8.0, BLE 4.0
+> Geolocation enabled. On devices without geolocation enabled, BLE scanning
+> Will not work - turn on "Location" in the settings of the phone.
+
 ##Assembly
 
 1. Open the Android-bridge folder in Android Studio (“Open”).
 2. Wait for the first Gradle Sync (downloads Gradle 8.9 and dependencies).
-3. Connect the phone with the debugging enabled via USB.
+3. Connect your phone with USB debugging enabled.
 4. Press **Run** (м). On the phone, issue Bluetooth permissions and
 Notification (Android 13+)
 
-If Gradle does not sync, update the plugin versions to build.gradle.kts
+If Gradle is not synced, update plugin versions to build.gradle.kts
 and `com.android.application`/`org.jetbrains.kotlin.android` to those used in your
 Android Studio.
 
@@ -46,12 +63,11 @@ Fast start: how to connect the radio
 
 1. **Enable Bluetooth and GPS (geolocation)** on your phone - BLE scan on
 Android requires a location service enabled.
-2. ** Turn on the TIDRadio TD-H9 radio and turn on the APRS/Bluetooth mode.
-(In the radio menu - APRS → BLE/KISS)
-3. Open the application **TDH9RadioBridge**, tab **Radio**, click
+2. ** Turn on the radio** TIDRadio TD-H9 and turn on APRS and Bluetooth.
+3. C issue permissions **Bluetooth** and **Geolocation** (if not already issued).
+4. Open the application **TDH9RadioBridge**, tab **The radio**, click
 - Scanning.
-4. C issue permissions **Bluetooth** and **Geolocation** (if not already issued).
-5. From the list of found devices, select the radio (or **History** → →
+5. From the list of found devices, select a walkie-talkie (or **History** → earlier)
 Push on it, and **Connect* happens.
 6. In the log, “[BLE] Connected <name> (<address>)” and a list of GATT services will appear.
 
@@ -59,9 +75,9 @@ Push on it, and **Connect* happens.
 
 1. Go to the tab ** "Server"**.
 2. Select ** Mode** (Binary KISS/AGW (AGWPE)/APRS-IS) and **port**.
-3. Click ** "Run the server"**. At the bottom will appear **local addresses** type
+3. Click ** "Start server"**. At the bottom will appear **local addresses** type
 `192.168.1.5:8023' is the address to be connected.
-4. Connect the APRS application to one of these addresses (phone and client -
+4. Connect the APRS application to one of these addresses (phone and client)
 on the same Wi-Fi network.
 
 Compatibility with APRS applications
@@ -73,17 +89,17 @@ Compatibility with APRS applications
 | **APRSIS32** | AGWPE (or Binary KISS) | 8000 / 8023 |
 | [**KMZViewer**](https://github.com/dkxce/KMZViewer) | KISS/AGW/APRS-IS | on setting |
 | [**APRSWin**](https://github.com/dkxce/APRSWin) | Binary KISS/AGW | 8023/8000 |
-| [**APRSAir**](https://github.com/dkxce/APRSAIR) | KISS/AGW/APRS-IS | as set up |
+| [**APRSAir**](https://github.com/dkxce/APRSAIR) | KISS/AGW/APRS-IS | on setting |
 
 > Programs that can **AGWPE** - set AGW mode (8000); waiting **KISS-TNC**
-> by TCP — Binary KISS (8023); network APRS-IS — APRS-IS (14580).
+> TCP — Binary KISS (8023); network APRS-IS — APRS-IS (14580).
 
 ## Comments
 
 **The kernel (BLE + KISS + AX.25 + three servers) is fully ported from
 Python project** [dkxce/Tidradio-TD-H9](https://github.com/dkxce/Tidradio-TD-H9/tree/main/TDH9KISS)
 Foreground service type “connectedDevice” requires Android 14+ permission
-`FOREGROUND SERVICE CONNECTED DEVICE' (stated in manifesto)
+`FOREGROUND SERVICE CONNECTED DEVICE' (stated in manifesto).
 
 -
 
