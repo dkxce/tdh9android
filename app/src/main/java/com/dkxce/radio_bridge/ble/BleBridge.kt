@@ -27,6 +27,8 @@ interface BleEvents {
     fun onConnected(addr: String, name: String)
     fun onDisconnected(addr: String?)
     fun onError(msg: String)
+    /** Informational status line (Bluetooth state, scan progress, ...). */
+    fun onStatus(msg: String)
     fun onServices(summary: List<String>, writeUuid: String?, notifyUuid: String?)
     fun onKissFrame(port: Int, command: Int, payload: ByteArray)
 }
@@ -75,33 +77,83 @@ class BleBridge(
 
     val isConnected: Boolean get() = gatt?.services?.isNotEmpty() == true
 
+    private fun adapter(): BluetoothAdapter? {
+        // Prefer the static default adapter (works without extra permissions),
+        // fall back to the manager-based one if needed.
+        @Suppress("DEPRECATION")
+        var a: BluetoothAdapter? = try {
+            BluetoothAdapter.getDefaultAdapter()
+        } catch (e: Exception) {
+            events.onStatus("BT adapter error: $e")
+            null
+        }
+        if (a == null) {
+            try {
+                val mgr = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+                a = mgr?.adapter
+            } catch (e: Exception) {
+                events.onStatus("BT manager error: $e")
+            }
+        }
+        return a
+    }
+
+    private fun btStateText(a: BluetoothAdapter): String {
+        @Suppress("DEPRECATION")
+        return when (a.state) {
+            BluetoothAdapter.STATE_ON -> "ON"
+            BluetoothAdapter.STATE_TURNING_ON -> "TURNING_ON"
+            BluetoothAdapter.STATE_OFF -> "OFF"
+            BluetoothAdapter.STATE_TURNING_OFF -> "TURNING_OFF"
+            else -> "UNKNOWN(${a.state})"
+        }
+    }
+
     fun startScan() {
         val a = adapter()
         if (a == null) {
+            events.onStatus("BT: no adapter (Bluetooth not supported)")
             events.onError("Bluetooth not supported on this device")
             return
         }
-        if (!a.isEnabled) {
-            events.onError("Bluetooth is OFF. Enable it to scan.")
-            return
+        @Suppress("DEPRECATION")
+        val on = try {
+            a.isEnabled
+        } catch (e: Exception) {
+            events.onStatus("BT: isEnabled check error: $e")
+            false
+        }
+        events.onStatus("BT: state=${btStateText(a)} enabled=$on")
+        if (!on) {
+            events.onStatus("BT: requesting enable ...")
+            // Try to ask the user to turn Bluetooth on.
+            try {
+                @Suppress("DEPRECATION")
+                a.enable()
+            } catch (e: Exception) {
+                events.onStatus("BT: cannot auto-enable ($e), ask user")
+            }
+            val recheck = try { a.isEnabled } catch (e: Exception) { false }
+            if (!recheck) {
+                events.onError("Bluetooth is OFF. Enable it to scan.")
+                return
+            }
+            events.onStatus("BT: now enabled")
         }
         val scanner = try {
             a.bluetoothLeScanner
         } catch (e: Exception) {
+            events.onStatus("BT: scanner unavailable ($e)")
             events.onError("BLE scanner unavailable: ${e.message}")
             return
         }
         this.scanner = scanner
+        events.onStatus("BT: starting scan ...")
         if (android.os.Build.VERSION.SDK_INT >= 31) {
             androidxStartScan(a)
         } else {
             legacyStartScan(a)
         }
-    }
-
-    private fun adapter(): BluetoothAdapter? {
-        val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
-        return manager.adapter
     }
 
     @SuppressLint("MissingPermission")
@@ -129,7 +181,11 @@ class BleBridge(
                 if (result == null) return
                 val d = result.device
                 val name = d.name ?: ""
+                events.onStatus("BT: found ${d.address}")
                 main.post { events.onScanResults(listOf(BleDeviceInfo(d.address, name, result.rssi))) }
+            }
+            override fun onScanFailed(errorCode: Int) {
+                events.onStatus("BT: scan failed code=$errorCode")
             }
         }
         scanCallback = callback

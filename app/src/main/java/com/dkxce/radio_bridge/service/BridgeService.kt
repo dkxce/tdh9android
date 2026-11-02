@@ -122,6 +122,9 @@ class BridgeService : Service() {
                 model.setScanning(false)
             }
         }
+        override fun onStatus(msg: String) {
+            model.appendLog("[BLE] $msg")
+        }
         override fun onServices(summary: List<String>, writeUuid: String?, notifyUuid: String?) {
             model.setServices(summary)
             model.appendLog("[BLE] services:")

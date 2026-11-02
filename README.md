@@ -1,6 +1,6 @@
 # Tidradio TD-H9 RadioBridge · TNC через BLE на Android
 
-[RU](README.md) | [EN](README.en.md) | [Releases](https://github.com/dkxce/tdh9android/releases)   
+[RU](README.md) | [EN](README.en.md) | [Releases](https://github.com/dkxce/tdh9android/releases)    
 
 Мост между рацией **TIDRadio TD-H9** (BLE GATT сервис Odmaster `af00`) и сетью
 **TCP/IP** с тремя протоколами. Рация выступает как аппаратный KISS-TNC: телефон
@@ -66,29 +66,10 @@ Android Studio.
 > Программы, умеющие **AGWPE** — ставьте режим AGW (8000); ожидающие **KISS-TNC**
 > по TCP — Binary KISS (8023); сетевые APRS-IS — APRS-IS (14580).
 
-## Структура проекта
-
-```
-app/src/main/java/com/dkxce/radio_bridge/
-  MainActivity.kt            — разрешения, запуск сервиса, Compose
-  app/AppModel.kt            — настройки (SharedPreferences) + UI-состояние
-  app/MainViewModel.kt       — ViewModel
-  ble/BleBridge.kt           — GATT-мост, скан/подключение/write/notify
-  core/Kiss.kt               — KISS-фрейминг и парсер
-  core/Ax25.kt               — бинарный AX.25 ⇄ APRS-текст
-  net/BaseTcpServer.kt       — общий TCP-сервер
-  net/KissTcpServer.kt       — Binary KISS
-  net/AgwTcpServer.kt        — AGWPE/Dire Wolf
-  net/AprsIsTcpServer.kt     — APRS-IS + passcode
-  service/BridgeService.kt   — foreground-сервис, связка BLE ⇄ TCP
-  ui/RadioBridgeApp.kt       — каркас экрана (вкладки)
-  ui/Tabs.kt                 — вкладки «Рация/Сервер/Лог»
-```
-
 ## Замечания
 
 - **Ядро (BLE + KISS + AX.25 + три сервера) полностью перенесено из
-  Python-проекта** [dkxce/Tidradio-TD-H9](https://github.com/dkxce/Tidradio-TD-H9)
+  Python-проекта** [dkxce/Tidradio-TD-H9](https://github.com/dkxce/Tidradio-TD-H9/tree/main/TDH9KISS)
 - Foreground-service типа `connectedDevice` требует на Android 14+ разрешение
   `FOREGROUND_SERVICE_CONNECTED_DEVICE` (заявлено в манифесте).
   
