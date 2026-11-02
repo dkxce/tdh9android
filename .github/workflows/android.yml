@@ -5,12 +5,14 @@ on:
     branches: [ "main" ]
     paths-ignore:
       - 'README.md'
-      - 'README.en.md' # Исключаем английскую версию, которую создает бот
+      - 'README.en.md'
+      - '.github/workflows/**'
   pull_request:
     branches: [ "main" ]
     paths-ignore:
       - 'README.md'
       - 'README.en.md'
+      - '.github/workflows/**'
 
 jobs:
   build:

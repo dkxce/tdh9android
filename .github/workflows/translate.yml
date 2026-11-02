@@ -18,10 +18,12 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Translate README
-        uses: dephraiim/translate-readme@main
+      - name: Translate README to English
+        uses: infocus7/translate-markdown-action@v1
         with:
-          lang: en
+          sources: README.md
+          from: ru
+          to: en
 
       - name: Commit & Push changes
         run: |
