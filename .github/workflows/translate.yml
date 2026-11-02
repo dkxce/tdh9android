@@ -6,32 +6,36 @@ on:
       - main
     paths:
       - 'README.md'
-  workflow_dispatch: # Allows a safe manual re-run of the translation from the Actions tab
+  workflow_dispatch:
 
 permissions:
-  contents: write # Required so the action can push the translated file back
+  contents: write
 
 jobs:
   translate:
     runs-on: ubuntu-latest
     steps:
-      # 1. Fetch repository source
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 2. Set up Node.js (the action runner uses node24)
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 24.x
 
-      # 3. Translate the Russian Markdown to English
-      #    The action commits and pushes README.en.md itself, so there is no
-      #    separate commit/push step needed here.
       - name: Auto Translate Markdown
         uses: ikhsan3adi/markdown-translator@v3
         with:
           LANG: en
           FILES: |
             README.md
-          INCREMENTAL: true # Translates only changed lines to avoid quota burn
+          INCREMENTAL: true
+
+      - name: Commit & Push changes
+        run: |
+          git config --local user.email "github-actions[bot]@://github.com"
+          git config --local user.name "github-actions[bot]"
+          git add .
+          # Коммитим только если появились изменения, иначе билд завершится с ошибкой
+          git diff --quiet && git diff --staged --quiet || git commit -m "docs: auto-translate README to English"
+          git push
