@@ -12,18 +12,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-/** Which protocol server to run. */
+/** Which protocol server to run. This is a LOCAL TCP server (the radio is a
+ * KISS TNC); there is no outbound IGate client, so no APRS-IS login settings. */
 enum class ServerMode { KISS, AGW, APRS_IS }
 
-/** IGate-like APRS-IS connection settings (kept for the settings UI). */
+/** Local bridge server configuration. */
 data class BridgeConfig(
     val serverMode: ServerMode = ServerMode.KISS,
     val port: Int = 8023,
-    val igateServer: String = "rotate.aprs2.net",
-    val igatePort: Int = 14580,
-    val igateClient: String = "NOCALL-10",
-    val igateName: String = "NOCALL-1",
-    val igatePasscode: Int = 0,
 )
 
 /** Immutable UI state surfaced to Composables. */
@@ -45,8 +41,24 @@ data class BleDeviceUi(val address: String, val name: String = "", val rssi: Int
 /**
  * Single source of truth for settings and UI state. Holds SharedPreferences
  * wiring and exposes StateFlows that the Compose UI observes.
+ *
+ * This is a process-wide singleton: both the UI (via MainViewModel) and the
+ * BridgeService must observe/mutate the SAME instance, otherwise UI events
+ * (discovered devices, logs, server running state) never reach the screen.
  */
-class AppModel(context: Context) {
+class AppModel private constructor(context: Context) {
+
+    companion object {
+        @Volatile
+        private var instance: AppModel? = null
+
+        @Synchronized
+        fun getInstance(context: Context): AppModel {
+            return instance ?: AppModel(context.applicationContext)
+                .also { instance = it }
+        }
+    }
+
     private val prefs: SharedPreferences =
         context.getSharedPreferences("radio_bridge", Context.MODE_PRIVATE)
 
@@ -63,11 +75,6 @@ class AppModel(context: Context) {
         prefs.edit()
             .putString("server_mode", cfg.serverMode.name)
             .putInt("port", cfg.port)
-            .putString("igate_server", cfg.igateServer)
-            .putInt("igate_port", cfg.igatePort)
-            .putString("igate_client", cfg.igateClient)
-            .putString("igate_name", cfg.igateName)
-            .putInt("igate_passcode", cfg.igatePasscode)
             .apply()
         _ui.value = _ui.value.copy(
             serverMode = cfg.serverMode, port = cfg.port,
@@ -77,11 +84,6 @@ class AppModel(context: Context) {
     fun loadConfig(): BridgeConfig = BridgeConfig(
         serverMode = ServerMode.valueOf(prefs.getString("server_mode", ServerMode.KISS.name)!!),
         port = prefs.getInt("port", 8023),
-        igateServer = prefs.getString("igate_server", "rotate.aprs2.net")!!,
-        igatePort = prefs.getInt("igate_port", 14580),
-        igateClient = prefs.getString("igate_client", "NOCALL-10")!!,
-        igateName = prefs.getString("igate_name", "NOCALL-1")!!,
-        igatePasscode = prefs.getInt("igate_passcode", 0),
     )
 
     // --- UI state mutators (called from ViewModel/service) ---

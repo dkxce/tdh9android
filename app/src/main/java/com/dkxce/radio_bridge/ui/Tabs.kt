@@ -84,15 +84,10 @@ fun DeviceTab(
 @Composable
 fun ServerTab(
     state: UiState,
-    cfg: BridgeConfig,
     onApply: (BridgeConfig) -> Unit,
 ) {
-    var mode by remember(cfg.serverMode) { mutableStateOf(cfg.serverMode) }
-    var port by remember(cfg.port) { mutableStateOf(cfg.port.toString()) }
-    var igServer by remember(cfg.igateServer) { mutableStateOf(cfg.igateServer) }
-    var igPort by remember(cfg.igatePort) { mutableStateOf(cfg.igatePort.toString()) }
-    var igClient by remember(cfg.igateClient) { mutableStateOf(cfg.igateClient) }
-    var igName by remember(cfg.igateName) { mutableStateOf(cfg.igateName) }
+    var mode by remember(state.serverMode) { mutableStateOf(state.serverMode) }
+    var port by remember(state.port) { mutableStateOf(state.port.toString()) }
 
     Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         // Mode selector
@@ -113,24 +108,10 @@ fun ServerTab(
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                 keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
 
-        Text("APRS-IS IGate (для режима APRS-IS):", style = MaterialTheme.typography.labelMedium)
-        OutlinedTextField(value = igServer, onValueChange = { igServer = it },
-            label = { Text("Сервер") }, singleLine = true)
-        OutlinedTextField(value = igPort, onValueChange = { igPort = it },
-            label = { Text("Порт") }, singleLine = true)
-        OutlinedTextField(value = igClient, onValueChange = { igClient = it },
-            label = { Text("APRSIS_CLIENT") }, singleLine = true)
-        OutlinedTextField(value = igName, onValueChange = { igName = it },
-            label = { Text("IGATE_NAME") }, singleLine = true)
-
         Button(onClick = {
             onApply(BridgeConfig(
                 serverMode = mode,
                 port = port.toIntOrNull() ?: 8023,
-                igateServer = igServer,
-                igatePort = igPort.toIntOrNull() ?: 14580,
-                igateClient = igClient,
-                igateName = igName,
             ))
         }, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Filled.Settings, null)
@@ -162,5 +143,28 @@ fun LogTab(state: UiState, onClearLog: () -> Unit) {
                     modifier = Modifier.padding(vertical = 1.dp))
             }
         }
+    }
+}
+
+/** About tab: program author and info. / О программе. */
+@Composable
+fun AboutTab() {
+    Column(
+        Modifier.fillMaxSize().padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text("RadioBridge", style = MaterialTheme.typography.headlineMedium)
+        Text("BLE KISS TNC bridge: TIDRadio TD-H9 ⇄ TCP/IP (KISS / AGWPE / APRS-IS)",
+            style = MaterialTheme.typography.bodyMedium)
+        Spacer(Modifier.height(8.dp))
+        Text("Автор: dkxce", style = MaterialTheme.typography.titleMedium)
+        Text("GitHub: https://github.com/dkxce", style = MaterialTheme.typography.bodyMedium)
+        Text("Проект: https://github.com/dkxce/Tidradio-TD-H9",
+            style = MaterialTheme.typography.bodyMedium)
+        Spacer(Modifier.height(8.dp))
+        Text("Версия: 1.0.0", style = MaterialTheme.typography.bodySmall)
+        Text("Мост между рацией TIDRadio TD-H9 (BLE-сервис APRS 0000af00) и внешними "
+            + "APRS-приложениями по локальным TCP-серверам.",
+            style = MaterialTheme.typography.bodySmall)
     }
 }

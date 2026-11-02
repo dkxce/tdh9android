@@ -50,7 +50,13 @@ class MainActivity : ComponentActivity() {
                         startService(BridgeService.ACTION_CONNECT, addr)
                     },
                     onDisconnect = { startService(BridgeService.ACTION_DISCONNECT) },
-                    onStartServer = { startService(BridgeService.ACTION_START_SERVER) },
+                    onStartServer = { cfg ->
+                        startService(
+                            BridgeService.ACTION_START_SERVER,
+                            cfg.serverMode.name,
+                            cfg.port,
+                        )
+                    },
                     onSaveConfig = viewModel::saveConfig,
                     onClearLog = viewModel::clearLog,
                 )
@@ -61,6 +67,17 @@ class MainActivity : ComponentActivity() {
     private fun startService(action: String, addr: String? = null) {
         val i = Intent(this, BridgeService::class.java).setAction(action)
         if (addr != null) i.putExtra(BridgeService.EXTRA_ADDR, addr)
+        launch(i)
+    }
+
+    private fun startService(action: String, mode: String?, port: Int?) {
+        val i = Intent(this, BridgeService::class.java).setAction(action)
+        if (mode != null) i.putExtra(BridgeService.EXTRA_MODE, mode)
+        if (port != null) i.putExtra(BridgeService.EXTRA_PORT, port)
+        launch(i)
+    }
+
+    private fun launch(i: Intent) {
         if (Build.VERSION.SDK_INT >= 26) {
             startForegroundService(i)
         } else {

@@ -46,11 +46,10 @@ class BridgeService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        model = AppModel(this)
+        model = AppModel.getInstance(this)
         createChannel()
         startForegroundNotify()
         running.set(true)
-        startServers()
     }
 
     override fun onDestroy() {
@@ -66,6 +65,8 @@ class BridgeService : Service() {
         val action = intent?.action ?: return START_STICKY
         when (action) {
             ACTION_SCAN -> {
+                model.clearDevices()
+                ensureBle().stopScanIfActive()
                 ensureBle().startScan()
                 model.setScanning(true)
             }
@@ -78,7 +79,10 @@ class BridgeService : Service() {
                 if (addr != null) ensureBle().connect(addr)
             }
             ACTION_DISCONNECT -> ensureBle().disconnect()
-            ACTION_START_SERVER -> startServers()
+            ACTION_START_SERVER -> startServers(
+                intent.getStringExtra(EXTRA_MODE)?.let { runCatching { ServerMode.valueOf(it) }.getOrNull() },
+                intent.getIntExtra(EXTRA_PORT, -1),
+            )
             ACTION_SEND_RADIO -> {
                 val data = intent.getByteArrayExtra(EXTRA_KISS)
                 if (data != null) sendToRadio(data)
@@ -122,8 +126,11 @@ class BridgeService : Service() {
     }
 
     // ------------------------------------------------------------------ servers
-    private fun startServers() {
-        val cfg = model.loadConfig()
+    private fun startServers(forcedMode: ServerMode? = null, forcedPort: Int? = null) {
+        val cfg0 = model.loadConfig()
+        val mode = forcedMode ?: cfg0.serverMode
+        val port = forcedPort ?: cfg0.port
+        val cfg = cfg0.copy(serverMode = mode, port = port)
         stopServers()
 
         fun log(m: String) = model.appendLog(m)
@@ -214,6 +221,8 @@ class BridgeService : Service() {
         const val ACTION_SEND_RADIO = "com.dkxce.radio_bridge.ACTION_SEND_RADIO"
         const val EXTRA_ADDR = "addr"
         const val EXTRA_KISS = "kiss"
+        const val EXTRA_MODE = "mode"
+        const val EXTRA_PORT = "port"
         private const val CHANNEL_ID = "bridge"
         private const val NOTIF_ID = 1
     }

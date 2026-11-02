@@ -140,6 +140,11 @@ class BleBridge(
         scanCallback = null; scanWorker = null
     }
 
+    /** Stop an ongoing scan if one is active, without erroring. */
+    fun stopScanIfActive() {
+        if (scanCallback != null || scanWorker != null) stopScan()
+    }
+
     fun connect(address: String) {
         val device = adapter()?.getRemoteDevice(address) ?: run {
             events.onError("Unknown device $address"); return

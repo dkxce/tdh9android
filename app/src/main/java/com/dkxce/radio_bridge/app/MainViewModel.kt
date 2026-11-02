@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.asStateFlow
  */
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val model = AppModel(application.applicationContext)
+    private val model = AppModel.getInstance(application.applicationContext)
 
     val ui: StateFlow<UiState> = model.ui
 

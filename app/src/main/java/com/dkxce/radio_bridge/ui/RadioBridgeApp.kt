@@ -15,7 +15,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.dkxce.radio_bridge.app.BridgeConfig
-import com.dkxce.radio_bridge.app.ServerMode
 import com.dkxce.radio_bridge.app.UiState
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -25,12 +24,11 @@ fun RadioBridgeApp(
     onScan: () -> Unit,
     onConnect: (String) -> Unit,
     onDisconnect: () -> Unit,
-    onStartServer: () -> Unit,
+    onStartServer: (BridgeConfig) -> Unit,
     onSaveConfig: (BridgeConfig) -> Unit,
     onClearLog: () -> Unit,
 ) {
     var tab by remember { mutableStateOf(0) }
-    var cfg by remember { mutableStateOf(BridgeConfig()) }
     val isConnected = state.connectedAddress != null
 
     Scaffold(
@@ -45,14 +43,20 @@ fun RadioBridgeApp(
                     icon = { Icon(Icons.Filled.Settings, null) }, label = { Text("Сервер") })
                 NavigationBarItem(selected = tab == 2, onClick = { tab = 2 },
                     icon = { Icon(Icons.Filled.Description, null) }, label = { Text("Лог") })
+                NavigationBarItem(selected = tab == 3, onClick = { tab = 3 },
+                    icon = { Icon(Icons.Filled.Info, null) }, label = { Text("About") })
             }
         }
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             when (tab) {
                 0 -> DeviceTab(state, isConnected, onScan, onConnect, onDisconnect)
-                1 -> ServerTab(state, cfg) { c -> cfg = c; onSaveConfig(c); onStartServer() }
+                1 -> ServerTab(state) { c ->
+                        onSaveConfig(c)
+                        onStartServer(c)
+                    }
                 2 -> LogTab(state, onClearLog)
+                3 -> AboutTab()
             }
         }
     }
