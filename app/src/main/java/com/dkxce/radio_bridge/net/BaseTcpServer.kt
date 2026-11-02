@@ -79,6 +79,11 @@ abstract class BaseTcpServer(
         onClientsChange()
     }
 
+    /** Let subclasses signal that client metadata changed (e.g. APRS login). */
+    protected fun notifyClientsChanged() {
+        onClientsChange()
+    }
+
     val clientCount: Int get() = clients.size
 
     /** List of connected clients as "protocol://ip:port/tx". APRS-IS overrides this

@@ -103,4 +103,6 @@ Android Studio.
   
 ---
 
-**Автор:** dkxce (c) https://github.com/dkxce/Tidradio-TD-H9 · 
+**Автор**: [dkxce](https://github.com/dkxce)     
+**Android**: [dkxce/tdh9android](https://github.com/dkxce/tdh9android)      
+**Desktop**: [dkxce/Tidradio-TD-H9](https://github.com/dkxce/Tidradio-TD-H9)      

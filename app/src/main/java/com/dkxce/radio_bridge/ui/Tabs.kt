@@ -39,7 +39,7 @@ fun DeviceTab(
                 if (state.scanning) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                 else Icon(Icons.Filled.BluetoothSearching, null, Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
-                Text(if (state.scanning) "Сканирование..." else "Сканировать")
+                Text(if (state.scanning) "Scanning..." else "Scan")
             }
             Spacer(Modifier.weight(1f))
             if (isConnected) {
@@ -47,7 +47,7 @@ fun DeviceTab(
                     containerColor = MaterialTheme.colorScheme.error)) {
                     Icon(Icons.Filled.Refresh, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Отключить")
+                    Text("Disconnect")
                 }
             }
         }
@@ -56,7 +56,7 @@ fun DeviceTab(
             Spacer(Modifier.height(8.dp))
             Card(colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.primaryContainer)) {
-                Text("Подключено: ${state.connectedName} (${state.connectedAddress})",
+                Text("Connected: ${state.connectedName} (${state.connectedAddress})",
                     modifier = Modifier.padding(10.dp))
             }
         }
@@ -78,7 +78,7 @@ fun DeviceTab(
 
         if (state.history.isNotEmpty()) {
             Spacer(Modifier.height(10.dp))
-            Text("История (подключённые ранее):", style = MaterialTheme.typography.labelMedium)
+            Text("History (previously connected):", style = MaterialTheme.typography.labelMedium)
             LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 items(state.history) { h ->
                     Card(onClick = { onConnect(h.address) }) {
@@ -87,7 +87,7 @@ fun DeviceTab(
                                 Text(h.name.ifBlank { "<no name>" }, style = MaterialTheme.typography.bodyMedium)
                                 Text(h.address, style = MaterialTheme.typography.bodySmall)
                             }
-                            Text("подключить", style = MaterialTheme.typography.labelSmall,
+                            Text("connect", style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary)
                         }
                     }
@@ -97,7 +97,7 @@ fun DeviceTab(
 
         if (state.serviceSummary.isNotEmpty()) {
             Spacer(Modifier.height(8.dp))
-            Text("Найденные сервисы:", style = MaterialTheme.typography.labelMedium)
+            Text("Found services:", style = MaterialTheme.typography.labelMedium)
             state.serviceSummary.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
         }
     }
@@ -118,7 +118,7 @@ fun ServerTab(
         var expanded by remember { mutableStateOf(false) }
         Box {
             OutlinedButton(onClick = { expanded = true }) {
-                Text("Режим: ${mode.label}")
+                Text("Mode: ${mode.label}")
             }
             DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                 ServerMode.entries.forEach { m ->
@@ -128,7 +128,7 @@ fun ServerTab(
             }
         }
 
-        OutlinedTextField(value = port, onValueChange = { port = it }, label = { Text("Порт") },
+        OutlinedTextField(value = port, onValueChange = { port = it }, label = { Text("Port") },
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                 keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
 
@@ -142,20 +142,20 @@ fun ServerTab(
         }, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Filled.PlayArrow, null)
             Spacer(Modifier.width(6.dp))
-            Text("Запустить сервер")
+            Text("Start server")
         }
 
         if (state.serverRunning) {
-            Text("Сервер работает: ${state.serverMode.label} :${state.port} · клиентов: ${state.clients}",
+            Text("Server running: ${state.serverMode.label} :${state.port} · clients: ${state.clients}",
                 color = MaterialTheme.colorScheme.primary)
             if (state.clientsList.isNotEmpty()) {
-                Text("Подключённые клиенты:", style = MaterialTheme.typography.labelMedium)
+                Text("Connected clients:", style = MaterialTheme.typography.labelMedium)
                 state.clientsList.forEach { c ->
                     Text(c, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                         style = MaterialTheme.typography.bodySmall)
                 }
             } else {
-                Text("Клиентов пока нет", style = MaterialTheme.typography.bodySmall,
+                Text("No clients yet", style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Button(onClick = onStopServer,
@@ -164,18 +164,18 @@ fun ServerTab(
                 modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.Filled.Stop, null)
                 Spacer(Modifier.width(6.dp))
-                Text("Остановить сервер")
+                Text("Stop server")
             }
         } else {
-            Text("Сервер остановлен", color = MaterialTheme.colorScheme.onSurfaceVariant,
+            Text("Server stopped", color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium)
         }
 
         // Local addresses for Wi-Fi/LAN clients to connect to.
-        Text("Локальные адреса сервера:", style = MaterialTheme.typography.labelMedium)
+        Text("Server local addresses:", style = MaterialTheme.typography.labelMedium)
         val ips = com.dkxce.radio_bridge.net.LocalAddresses.ipv4()
         if (ips.isEmpty()) {
-            Text("(нет активной сети / IP не определён)",
+            Text("(no active network / no IP)",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
@@ -184,7 +184,7 @@ fun ServerTab(
                     fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                     style = MaterialTheme.typography.bodySmall)
             }
-            Text("Подключитесь к одному из адресов с другого устройства в той же сети.",
+            Text("Connect to one of these addresses from another device on the same network.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -196,7 +196,7 @@ fun LogTab(state: UiState, onClearLog: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("RX/TX Log", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-            TextButton(onClick = onClearLog) { Text("Очистить") }
+            TextButton(onClick = onClearLog) { Text("Clear") }
         }
         Spacer(Modifier.height(4.dp))
         LazyColumn(
@@ -233,21 +233,21 @@ fun AboutTab() {
         Text("TDH9RadioBridge", style = MaterialTheme.typography.headlineMedium)
         Text("BLE KISS TNC bridge: TIDRadio TD-H9 ⇄ TCP/IP (KISS / AGWPE / APRS-IS)",
             style = MaterialTheme.typography.bodyMedium)
-        Text("Версия: v1.1.0", style = MaterialTheme.typography.bodySmall)
+        Text("Version: v1.1.0", style = MaterialTheme.typography.bodySmall)
         Spacer(Modifier.height(8.dp))
-        Text("Автор: dkxce", style = MaterialTheme.typography.titleMedium)
+        Text("Author: dkxce", style = MaterialTheme.typography.titleMedium)
         link("https://github.com/dkxce", "GitHub: https://github.com/dkxce")
         Spacer(Modifier.height(4.dp))
-        Text("Проект (Android):", style = MaterialTheme.typography.bodySmall)
+        Text("Project (Android):", style = MaterialTheme.typography.bodySmall)
         link("https://github.com/dkxce/tdh9android",
             "https://github.com/dkxce/tdh9android")
         Spacer(Modifier.height(4.dp))
-        Text("Десктоп-версия (Python):", style = MaterialTheme.typography.bodySmall)
+        Text("Desktop version (Python):", style = MaterialTheme.typography.bodySmall)
         link("https://github.com/dkxce/Tidradio-TD-H9",
             "https://github.com/dkxce/Tidradio-TD-H9")
         Spacer(Modifier.height(8.dp))
-        Text("Мост между рацией TIDRadio TD-H9 (BLE-сервис APRS 0000af00) и внешними "
-            + "APRS-приложениями по локальным TCP-серверам.",
+        Text("Bridge between the TIDRadio TD-H9 radio (BLE APRS service 0000af00) and external "
+            + "APRS applications via local TCP servers.",
             style = MaterialTheme.typography.bodySmall)
     }
 }

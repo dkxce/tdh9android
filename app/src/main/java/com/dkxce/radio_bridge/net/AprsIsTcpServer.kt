@@ -65,6 +65,7 @@ class AprsIsTcpServer(
             val passCode = passStr.toIntOrNull() ?: 0
             val ok = (passCode != 0) && (computePasscode(call) == passCode)
             peers[c] = call to ok
+            notifyClientsChanged() // refresh client list (callsign + tx/rx) in UI
             sendLine(out, "# logresp $call ${if (ok) "verified" else "unverified"}, server $SERVER_ID")
             if (ok) onTx("$call>APRS:$SERVER_ID online".toByteArray(Charsets.UTF_8))
             return

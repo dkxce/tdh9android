@@ -39,11 +39,11 @@ fun RadioBridgeApp(
         bottomBar = {
             NavigationBar {
                 NavigationBarItem(selected = tab == 0, onClick = { tab = 0 },
-                    icon = { Icon(Icons.Filled.Bluetooth, null) }, label = { Text("Рация") })
+                    icon = { Icon(Icons.Filled.Bluetooth, null) }, label = { Text("Radio") })
                 NavigationBarItem(selected = tab == 1, onClick = { tab = 1 },
-                    icon = { Icon(Icons.Filled.Settings, null) }, label = { Text("Сервер") })
+                    icon = { Icon(Icons.Filled.Settings, null) }, label = { Text("Server") })
                 NavigationBarItem(selected = tab == 2, onClick = { tab = 2 },
-                    icon = { Icon(Icons.Filled.Description, null) }, label = { Text("Лог") })
+                    icon = { Icon(Icons.Filled.Description, null) }, label = { Text("Log") })
                 NavigationBarItem(selected = tab == 3, onClick = { tab = 3 },
                     icon = { Icon(Icons.Filled.Info, null) }, label = { Text("About") })
             }
