@@ -8,6 +8,7 @@ package com.dkxce.radio_bridge.ble
 
 import android.annotation.SuppressLint
 import android.bluetooth.*
+import android.bluetooth.le.BluetoothLeScanner
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
@@ -165,7 +166,7 @@ class BleBridge(
             ch.writeType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
             gatt?.writeCharacteristic(ch)
         }
-        if (ok == null || !ok) events.onError("BLE write failed")
+        if (ok != true) events.onError("BLE write failed")
     }
 
     private val gattCallback = object : BluetoothGattCallback() {
