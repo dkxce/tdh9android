@@ -1,4 +1,4 @@
-# Tidradio TD-H9 RadioBridge · TNC via BLE on Android
+# TDH9RadioBridge · TNC via BLE on Android
 
 [RU](README.md) | [EN](README.en.md) | [Releases](https://github.com/dkxce/tdh9android/releases)
 
@@ -7,7 +7,7 @@ Bridge between **TIDRadio TD-H9** (BLE GATT service Odmaster 'af00') and the net
 connects via BLE and exchanges with the KISS / AX.25-frame radio, and the application
 Raises local TCP servers to which APRS applications are connected.
 
-** Version:** 1.0. 0
+** Version:** v1.1. 0
 
 ## Opportunities
 
@@ -42,15 +42,27 @@ Android Studio.
 
 ## Used
 
-1. Open the tab ** Radio **, click ** Scan **, select the radio from
-The list goes **get in. BLE connection will be established, the list will appear
-Services/GATT Characteristics.
-2. Go to the tab **"Server"**: select the mode (KISS/AGW/APRS-IS), port,
-If you need APRS-IS settings, click ** "Apply and run"**.
-3. Connect the APRS app to '127.0.0.1:<port>' of the phone (via the same Wi-Fi)
-Hotspot phone - the real address of the host.
-4. Radio-accepted packages leave all customers; customer-sent footage
-They're on the BLE radio.
+Fast start: how to connect the radio
+
+1. **Enable Bluetooth and GPS (geolocation)** on your phone - BLE scan on
+Android requires a location service enabled.
+2. ** Turn on the TIDRadio TD-H9 radio and turn on the APRS/Bluetooth mode.
+(In the radio menu - APRS → BLE/KISS)
+3. Open the application **TDH9RadioBridge**, tab **Radio**, click
+- Scanning.
+4. C issue permissions **Bluetooth** and **Geolocation** (if not already issued).
+5. From the list of found devices, select the radio (or **History** → →
+Push on it, and **Connect* happens.
+6. In the log, “[BLE] Connected <name> (<address>)” and a list of GATT services will appear.
+
+### Launching the server
+
+1. Go to the tab ** "Server"**.
+2. Select ** Mode** (Binary KISS/AGW (AGWPE)/APRS-IS) and **port**.
+3. Click ** "Run the server"**. At the bottom will appear **local addresses** type
+`192.168.1.5:8023' is the address to be connected.
+4. Connect the APRS application to one of these addresses (phone and client -
+on the same Wi-Fi network.
 
 Compatibility with APRS applications
 
@@ -60,7 +72,7 @@ Compatibility with APRS applications
 | **UI-View32** | AGWPE TCP/IP | 8000 |
 | **APRSIS32** | AGWPE (or Binary KISS) | 8000 / 8023 |
 | [**KMZViewer**](https://github.com/dkxce/KMZViewer) | KISS/AGW/APRS-IS | on setting |
-| [**APRSWin**](https://https://github.com/dkxce/APRSWin) | Binary KISS/AGW | 8023/8000 |
+| [**APRSWin**](https://github.com/dkxce/APRSWin) | Binary KISS/AGW | 8023/8000 |
 | [**APRSAir**](https://github.com/dkxce/APRSAIR) | KISS/AGW/APRS-IS | as set up |
 
 > Programs that can **AGWPE** - set AGW mode (8000); waiting **KISS-TNC**
