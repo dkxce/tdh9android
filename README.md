@@ -9,7 +9,7 @@
 
 **Версия:** v1.1.0
 
-## Возможности
+## 1. Возможности
 
 - **BLE-подключение** к рации как к KISS-TNC (service `0000af00`, write `af01`,
   notify `af02`; запасные UUID `ff02`/`ffe2` и `ff01`/`ffe1`).
@@ -21,14 +21,14 @@
 - Встроенные кодеры/декодеры **KISS** и **AX.25** (бинарный ⇄ текст).
 - Лог RX/TX, список клиентов, настройки (SharedPreferences).
 
-## Требования
+## 2. Требования
 
 - Android Studio (Ladybug 2024.2.1+ рекомендуются).
 - JDK 17.
 - Устройство Android 8.0+ (API 26).
 - Рация TIDRadio TD-H9 или прошивка с APRS BLE-сервисом.
 
-### Минимальные требования к Android-устройству
+### 2.1 Минимальные требования к Android-устройству
 
 - **ОС:** Android **8.0 (API 26)** и выше.
 - **RAM/CPU:** 1 ГБ ОЗУ и одноядерный CPU (приложение работает и на слабых устройствах).
@@ -45,7 +45,7 @@
 > геолокация включена. На устройствах без включённой геолокации сканирование BLE
 > работать не будет — включите «Местоположение» в настройках телефона.
 
-## Сборка
+## 3. Сборка
 
 1. Откройте папку `android-bridge` в Android Studio («Open»).
 2. Дождитесь первого Gradle Sync (скачает Gradle 8.9 и зависимости).
@@ -57,9 +57,9 @@
 и `com.android.application`/`org.jetbrains.kotlin.android` до используемых в вашей
 Android Studio.
 
-## Использование
+## 4. Использование
 
-### Быстрый старт: как подключить рацию
+### 4.1 Быстрый старт: как подключить рацию
 
 1. **Включите Bluetooth и GPS (геолокацию)** на телефоне — BLE-сканирование на
    Android требует включённой службы местоположения.
@@ -71,7 +71,7 @@ Android Studio.
    подключённую) — нажмите на неё, произойдёт **Connect**.
 6. В логе появится `[BLE] Connected <имя> (<адрес>)` и список GATT-сервисов.
 
-### Запуск сервера
+### 4.2 Запуск сервера
 
 1. Перейдите во вкладку **«Сервер»**.
 2. Выберите **режим** (Binary KISS / AGW (AGWPE) / APRS-IS) и **порт**.
@@ -80,7 +80,7 @@ Android Studio.
 4. Подключите APRS-приложение к одному из этих адресов (телефон и клиент —
    в одной сети Wi-Fi).
 
-## Совместимость с APRS-приложениями
+## 5. Совместимость с APRS-приложениями
 
 | Приложение | Протокол | Порт |
 |---|---|---|
@@ -94,15 +94,21 @@ Android Studio.
 > Программы, умеющие **AGWPE** — ставьте режим AGW (8000); ожидающие **KISS-TNC**
 > по TCP — Binary KISS (8023); сетевые APRS-IS — APRS-IS (14580).
 
-## Замечания
+## 6. Замечания
 
 - **Ядро (BLE + KISS + AX.25 + три сервера) полностью перенесено из
   Python-проекта** [dkxce/Tidradio-TD-H9](https://github.com/dkxce/Tidradio-TD-H9/tree/main/TDH9KISS)
 - Foreground-service типа `connectedDevice` требует на Android 14+ разрешение
   `FOREGROUND_SERVICE_CONNECTED_DEVICE` (заявлено в манифесте).
   
+## 7. Лицензия и авторство
+
+Программа — **авторский проект dkxce** (с) https://github.com/dkxce.       
+Написана для совместимости с TIDRadio TD-H9.
+  
 ---
 
 **Автор**: [dkxce](https://github.com/dkxce)     
 **Android**: [dkxce/tdh9android](https://github.com/dkxce/tdh9android)      
-**Desktop**: [dkxce/Tidradio-TD-H9](https://github.com/dkxce/Tidradio-TD-H9)      
+**Desktop**: [dkxce/tdh9desktop](https://github.com/dkxce/tdh9desktop)      
+**Manual**: [dkxce/Tidradio-TD-H9](https://github.com/dkxce/Tidradio-TD-H9)      
