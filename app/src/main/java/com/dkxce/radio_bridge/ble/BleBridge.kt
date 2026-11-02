@@ -127,14 +127,13 @@ class BleBridge(
             events.onError("Bluetooth not supported on this device")
             return
         }
-        // On Android <12 the location service (GPS) must be ON for BLE scan
-        // to return devices. Log a clear hint if it is off.
-        if (android.os.Build.VERSION.SDK_INT < 31) {
-            val loc = locationEnabled()
-            events.onStatus("GPS: location service ${if (loc) "ON" else "OFF"}")
-            if (!loc) {
-                events.onStatus("Hint: enable Location (GPS) so BLE scan can find devices")
-            }
+        // The location service (GPS / device location) must be ON for BLE scanning
+        // to return devices on most Android versions (Bluetooth scan is treated
+        // as a location request unless the app opts out). Log a clear hint if off.
+        val loc = locationEnabled()
+        events.onStatus("GPS: location service ${if (loc) "ON" else "OFF"}")
+        if (!loc) {
+            events.onStatus("Hint: enable Location (GPS) so BLE scan can find devices")
         }
         @Suppress("DEPRECATION")
         val on = try {

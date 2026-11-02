@@ -105,6 +105,11 @@ class MainActivity : ComponentActivity() {
             add(Manifest.permission.ACCESS_FINE_LOCATION)
             add(Manifest.permission.ACCESS_COARSE_LOCATION)
         }
+        // BLE scanning counts as a location use unless the app opts out
+        // (BLUETOOTH_SCAN without android:usesPermissionFlags="neverForLocation").
+        // So request location on all versions, including Android 12+.
+        add(Manifest.permission.ACCESS_FINE_LOCATION)
+        add(Manifest.permission.ACCESS_COARSE_LOCATION)
         if (Build.VERSION.SDK_INT >= 33) add(Manifest.permission.POST_NOTIFICATIONS)
     }.toTypedArray()
 

@@ -105,7 +105,9 @@ class AppModel private constructor(context: Context) {
 
     fun appendLog(text: String) {
         val cur = _ui.value.log
-        val next = (cur + text).takeLast(500)
+        val stamp = java.time.LocalTime.now().withNano(0).toString() // HH:mm:ss
+        val line = "$stamp $text"
+        val next = (cur + line).takeLast(500)
         _ui.value = _ui.value.copy(log = next)
     }
 
