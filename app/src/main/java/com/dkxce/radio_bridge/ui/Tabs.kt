@@ -216,6 +216,7 @@ fun LogTab(state: UiState, onClearLog: () -> Unit) {
 @Composable
 fun AboutTab() {
     val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+    @Composable
     fun link(url: String, label: String) {
         Text(
             label,

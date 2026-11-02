@@ -83,7 +83,7 @@ abstract class BaseTcpServer(
 
     /** List of connected clients as "protocol://ip:port/tx". APRS-IS overrides this
      * to reflect verified ("/tx") / unverified ("/rx") state. */
-    fun clientList(): List<String> {
+    open fun clientList(): List<String> {
         return clients.map { c ->
             "$protocol://${c.address}:${c.port}/tx"
         }
