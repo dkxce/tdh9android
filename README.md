@@ -85,7 +85,7 @@ Android Studio.
 | Приложение | Протокол | Порт |
 |---|---|---|
 | **APRSDroid** | Binary KISS (TNC (KISS), TCP/IP) / APRS-IS | по настройке |
-| **APRSdroid 9M2PJU Mod** | OruxMaps  | Binary KISS (TNC (KISS), TCP/IP) / APRS-IS | по настройке |
+| **APRSdroid 9M2PJU Mod** | Binary KISS (TNC (KISS), TCP/IP) / APRS-IS | по настройке |
 | **OruxMaps** | APRS-IS | по настройке |
 | **UISS** | AGWPE TCP/IP | 8000 |
 | **UI-View32** | AGWPE TCP/IP | 8000 |
