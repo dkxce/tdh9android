@@ -47,6 +47,7 @@ class BridgeService : Service() {
     override fun onCreate() {
         super.onCreate()
         model = AppModel.getInstance(this)
+        model.loadHistory()
         createChannel()
         startForegroundNotify()
         running.set(true)
@@ -108,6 +109,8 @@ class BridgeService : Service() {
         }
         override fun onConnected(addr: String, name: String) {
             model.setConnected(addr, name)
+            model.recordConnectedDevice(
+                com.dkxce.radio_bridge.app.BleDeviceUi(addr, name, 0))
             model.appendLog("[BLE] Connected $name ($addr)")
         }
         override fun onDisconnected(addr: String?) {
@@ -212,9 +215,14 @@ class BridgeService : Service() {
         val text = Ax25.toAprsText(raw)
         model.appendLog("[RX] $text")
         // forward to every server (as raw bytes; each wraps its own protocol)
-        kissServer?.broadcastRadio(raw)
-        agwServer?.broadcastRadio(raw)
-        aprsServer?.broadcastRadio(raw)
+        val n = currentClientCount()
+        if (n == 0) {
+            model.appendLog("[RX] no TCP clients connected, skip broadcast")
+            return
+        }
+        try { kissServer?.broadcastRadio(raw) } catch (e: Exception) { model.appendLog("[RX!] KISS broadcast: $e") }
+        try { agwServer?.broadcastRadio(raw) } catch (e: Exception) { model.appendLog("[RX!] AGW broadcast: $e") }
+        try { aprsServer?.broadcastRadio(raw) } catch (e: Exception) { model.appendLog("[RX!] APRS-IS broadcast: $e") }
     }
 
     private fun sendToRadio(ax25Payload: ByteArray) {

@@ -49,12 +49,15 @@ class KissTcpServer(
 
     override fun broadcastRadio(raw: ByteArray) {
         val frame = Kiss.frame(raw)
-        for (c in clients) {
+        val targets = clients.toList()
+        for (c in targets) {
             try {
                 val out: OutputStream = c.socket.getOutputStream()
                 out.write(frame)
                 out.flush()
-            } catch (_: Exception) { }
+            } catch (e: Exception) {
+                onLog?.invoke("[KISS!] broadcast to ${c.address} failed: $e")
+            }
         }
     }
 }

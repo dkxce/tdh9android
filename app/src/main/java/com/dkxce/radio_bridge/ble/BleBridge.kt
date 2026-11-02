@@ -252,13 +252,29 @@ class BleBridge(
     /** Write a ready-made KISS frame to the write characteristic. */
     fun sendKiss(kissFrame: ByteArray) {
         val ch = writeChar ?: return
-        val ok = if (android.os.Build.VERSION.SDK_INT >= 33) {
-            gatt?.writeCharacteristic(ch, kissFrame, BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE)
-        } else {
-            ch.writeType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
-            gatt?.writeCharacteristic(ch)
+        val g = gatt
+        if (g == null || !g.isConnected) {
+            events.onError("BLE write failed: not connected")
+            return
         }
-        if (ok != true) events.onError("BLE write failed")
+        // write-without-response: the synchronous boolean only tells whether the
+        // request was queued to the stack, NOT whether it was transmitted. Real
+        // outcome is reported later in onCharacteristicWrite. So we do not treat
+        // "ok != true" as an error here to avoid false "write failed" spam.
+        val queued = try {
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                g.writeCharacteristic(ch, kissFrame, BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE)
+            } else {
+                ch.writeType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+                g.writeCharacteristic(ch)
+            }
+        } catch (e: Exception) {
+            events.onError("BLE write exception: $e")
+            null
+        }
+        if (queued == false) {
+            events.onError("BLE write rejected by stack")
+        }
     }
 
     private val gattCallback = object : BluetoothGattCallback() {

@@ -26,6 +26,7 @@ data class BridgeConfig(
 data class UiState(
     val scanning: Boolean = false,
     val devices: List<BleDeviceUi> = emptyList(),
+    val history: List<BleDeviceUi> = emptyList(),
     val connectedAddress: String? = null,
     val connectedName: String = "",
     val serviceSummary: List<String> = emptyList(),
@@ -95,6 +96,25 @@ class AppModel private constructor(context: Context) {
         _ui.value = _ui.value.copy(devices = _ui.value.devices + d)
     }
     fun clearDevices() { _ui.value = _ui.value.copy(devices = emptyList()) }
+    fun recordConnectedDevice(d: BleDeviceUi) {
+        val cur = _ui.value.history.filterNot { it.address == d.address }
+        val next = (listOf(d) + cur).take(10)
+        // persist as JSON-serialized address list
+        prefs.edit()
+            .putString("device_history", (listOf(d) + cur).take(10)
+                .joinToString(";") { it.address + "|" + it.name })
+            .apply()
+        _ui.value = _ui.value.copy(history = next)
+    }
+    fun loadHistory() {
+        val raw = prefs.getString("device_history", "") ?: ""
+        val list = raw.split(";").filter { it.isNotEmpty() }.mapNotNull { part ->
+            val idx = part.indexOf('|')
+            if (idx < 0) null
+            else BleDeviceUi(part.substring(0, idx), part.substring(idx + 1))
+        }
+        _ui.value = _ui.value.copy(history = list)
+    }
     fun setConnected(addr: String?, name: String) {
         _ui.value = _ui.value.copy(connectedAddress = addr, connectedName = name)
     }

@@ -75,6 +75,25 @@ fun DeviceTab(
             }
         }
 
+        if (state.history.isNotEmpty()) {
+            Spacer(Modifier.height(10.dp))
+            Text("История (подключённые ранее):", style = MaterialTheme.typography.labelMedium)
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                items(state.history) { h ->
+                    Card(onClick = { onConnect(h.address) }) {
+                        Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(h.name.ifBlank { "<no name>" }, style = MaterialTheme.typography.bodyMedium)
+                                Text(h.address, style = MaterialTheme.typography.bodySmall)
+                            }
+                            Text("подключить", style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                }
+            }
+        }
+
         if (state.serviceSummary.isNotEmpty()) {
             Spacer(Modifier.height(8.dp))
             Text("Найденные сервисы:", style = MaterialTheme.typography.labelMedium)
