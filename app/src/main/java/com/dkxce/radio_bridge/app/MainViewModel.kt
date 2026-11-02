@@ -25,6 +25,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val model = AppModel.getInstance(application.applicationContext)
 
+    init {
+        // Load the previously-connected devices right away, so the History list
+        // is populated as soon as the app opens (no Scan needed).
+        model.loadHistory()
+    }
+
     val ui: StateFlow<UiState> = model.ui
 
     fun saveConfig(cfg: BridgeConfig) = model.saveConfig(cfg)

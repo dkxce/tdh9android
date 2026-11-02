@@ -248,7 +248,11 @@ fun AboutTab() {
         link("https://github.com/dkxce/tdh9android",
             "https://github.com/dkxce/tdh9android")
         Spacer(Modifier.height(4.dp))
-        Text("Desktop version (Python):", style = MaterialTheme.typography.bodySmall)
+        Text("Desktop version:", style = MaterialTheme.typography.bodySmall)
+        link("https://github.com/dkxce/tdh9desktop",
+            "https://github.com/dkxce/tdh9desktop")
+        Spacer(Modifier.height(4.dp))
+        Text("Main repository:", style = MaterialTheme.typography.bodySmall)
         link("https://github.com/dkxce/Tidradio-TD-H9",
             "https://github.com/dkxce/Tidradio-TD-H9")
         Spacer(Modifier.height(8.dp))
