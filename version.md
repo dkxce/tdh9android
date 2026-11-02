@@ -1,4 +1,5 @@
 ### Version Increment
 
-**Info**: update in to build apk via github actions    
-**Current version**: v1.1.0b6-fbuild-2
+**Info**: Update in to build apk via github actions, see [.github/workflows/android.yml](.github/workflows/android.yml)   
+**Current version**: v1.1.0b7-fbuild-3    
+**Author**: [dkxce](https://github.com/dkxce/)     

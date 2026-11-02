@@ -39,7 +39,9 @@ class AprsIsTcpServer(
     override fun handleClient(c: TcpClient) {
         val out: OutputStream = c.socket.getOutputStream()
         try {
-            sendLine(out, "# SimpleAPRSServer startup")
+            // Welcome banner like the Python reference server, so strict
+            // APRS-IS clients send their "user ..." login right after it.
+            sendLine(out, "# ${SERVER_ID}: connection accepted")
             val reader = BufferedReader(InputStreamReader(c.socket.getInputStream(), Charsets.UTF_8))
             var line: String?
             while (reader.readLine().also { line = it } != null) {
@@ -59,24 +61,28 @@ class AprsIsTcpServer(
         // a late login/derived callsign is always reflected in the UI.
         val parts = text.split(" ")
         if (parts.isNotEmpty() && parts[0].equals("user", true)) {
-            // user CALL pass PASSCODE vers ...
-            var call = ""; var passStr = ""
-            for (i in 1 until parts.size) {
+            // Login: "user CALL pass PASSCODE vers ... filter ..." (like Python).
+            // Walk the whole line collecting CALLSIGN and PASSCODE by keyword
+            // position; do NOT return early on "vers" (that would skip saving
+            // the callsign for standard clients that include `vers`).
+            var callsign = ""
+            var passcodeRaw = ""
+            for (i in parts.indices) {
                 val p = parts[i]
                 when (p.lowercase()) {
-                    "pass" -> if (i + 1 < parts.size) passStr = parts[i + 1]
-                    "vers" -> return // ignore the rest of login line
-                    else -> if (call.isEmpty() && !p.equals("filter", true) && p != "vers" && p != "pass") call = p
+                    "user" -> if (i + 1 < parts.size && callsign.isEmpty()) callsign = parts[i + 1]
+                    "pass" -> if (i + 1 < parts.size) passcodeRaw = parts[i + 1]
+                    else -> { /* ignore */ }
                 }
             }
-            val passCode = passStr.toIntOrNull() ?: 0
-            val ok = (passCode != 0) && (computePasscode(call) == passCode)
-            c.callsign = call
+            val passCode = passcodeRaw.toIntOrNull() ?: -1
+            val ok = (passCode != -1) && (computePasscode(callsign) == passCode)
+            c.callsign = callsign
             c.verified = ok
-            onLog?.invoke("[APRS] login: user=$call pass=$passCode verified=$ok")
+            onLog?.invoke("[APRS] login: user=$callsign pass=$passCode verified=$ok")
             notifyClientsChanged() // refresh client list (callsign + tx/rx) in UI
-            sendLine(out, "# logresp $call ${if (ok) "verified" else "unverified"}, server $SERVER_ID")
-            if (ok) onTx("$call>APRS:$SERVER_ID online".toByteArray(Charsets.UTF_8))
+            sendLine(out, "# logresp $callsign ${if (ok) "verified" else "unverified"}, server $SERVER_ID")
+            if (ok) onTx("$callsign>APRS:$SERVER_ID online".toByteArray(Charsets.UTF_8))
             return
         }
 
