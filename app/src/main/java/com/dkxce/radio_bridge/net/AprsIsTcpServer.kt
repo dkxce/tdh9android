@@ -71,6 +71,16 @@ class AprsIsTcpServer(
             return
         }
 
+        // If the client never sent "user ..." login, derive the callsign from
+        // its first APRS packet ("CALL>DST,...") so the client list shows it.
+        if (peers[c] == null && text.isNotEmpty() && !text.startsWith("#") && !text.startsWith("user")) {
+            val call = text.substringBefore('>').trim()
+            if (call.isNotEmpty()) {
+                peers[c] = call to false
+                notifyClientsChanged()
+            }
+        }
+
         // Plain APRS data line from a verified (or read-only) client -> TX.
         if (peers[c] != null) {
             // comments never go to the radio
