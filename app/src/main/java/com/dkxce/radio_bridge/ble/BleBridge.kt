@@ -253,7 +253,7 @@ class BleBridge(
     fun sendKiss(kissFrame: ByteArray) {
         val ch = writeChar ?: return
         val g = gatt
-        if (g == null || !g.isConnected) {
+        if (g == null || !g.isConnected()) {
             events.onError("BLE write failed: not connected")
             return
         }
