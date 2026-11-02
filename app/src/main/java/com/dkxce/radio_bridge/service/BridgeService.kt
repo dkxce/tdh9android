@@ -152,7 +152,7 @@ class BridgeService : Service() {
         stopServers()
 
         fun log(m: String) = model.appendLog(m)
-        val onClients = { model.setClients(currentClientCount()) }
+        val onClients = { refreshClientInfo() }
 
         when (cfg.serverMode) {
             ServerMode.KISS -> {
@@ -184,12 +184,27 @@ class BridgeService : Service() {
         return n
     }
 
+    private fun currentClientList(): List<String> {
+        val out = LinkedHashSet<String>()
+        kissServer?.clientList()?.let { out.addAll(it) }
+        agwServer?.clientList()?.let { out.addAll(it) }
+        aprsServer?.clientList()?.let { out.addAll(it) }
+        return out.toList()
+    }
+
+    /** Push client count + list to the UI model. */
+    private fun refreshClientInfo() {
+        model.setClients(currentClientCount())
+        model.setClientsList(currentClientList())
+    }
+
     private fun stopServers() {
         kissServer?.stop(); kissServer = null
         agwServer?.stop(); agwServer = null
         aprsServer?.stop(); aprsServer = null
         model.setServerRunning(false)
         model.setClients(0)
+        model.setClientsList(emptyList())
     }
 
     // ------------------------------------------------------------------ radio io

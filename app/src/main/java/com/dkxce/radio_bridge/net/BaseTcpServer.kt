@@ -80,6 +80,11 @@ abstract class BaseTcpServer(
 
     val clientCount: Int get() = clients.size
 
+    /** List of connected clients as "ip:port" strings. */
+    fun clientList(): List<String> {
+        return clients.map { "${it.address}:${it.port}" }
+    }
+
     protected fun onError(msg: String) {}
 
     /** Per-connection protocol loop. When it returns, the client is removed. */

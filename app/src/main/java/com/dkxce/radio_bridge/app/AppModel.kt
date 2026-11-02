@@ -33,6 +33,7 @@ data class UiState(
     val serverMode: ServerMode = ServerMode.KISS,
     val port: Int = 8023,
     val clients: Int = 0,
+    val clientsList: List<String> = emptyList(),
     val log: List<String> = emptyList(),
 )
 
@@ -100,6 +101,7 @@ class AppModel private constructor(context: Context) {
     fun setServices(summary: List<String>) { _ui.value = _ui.value.copy(serviceSummary = summary) }
     fun setServerRunning(running: Boolean) { _ui.value = _ui.value.copy(serverRunning = running) }
     fun setClients(n: Int) { _ui.value = _ui.value.copy(clients = n) }
+    fun setClientsList(list: List<String>) { _ui.value = _ui.value.copy(clientsList = list) }
 
     fun appendLog(text: String) {
         val cur = _ui.value.log

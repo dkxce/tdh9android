@@ -128,6 +128,16 @@ fun ServerTab(
         if (state.serverRunning) {
             Text("Сервер работает: ${state.serverMode} :${state.port} · клиентов: ${state.clients}",
                 color = MaterialTheme.colorScheme.primary)
+            if (state.clientsList.isNotEmpty()) {
+                Text("Подключённые клиенты:", style = MaterialTheme.typography.labelMedium)
+                state.clientsList.forEach { c ->
+                    Text(c, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        style = MaterialTheme.typography.bodySmall)
+                }
+            } else {
+                Text("Клиентов пока нет", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             Button(onClick = onStopServer,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.error),
