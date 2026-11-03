@@ -5,7 +5,14 @@ on:
     branches:
       - main
     paths:
-      - 'README.md'
+      - 'TD-H9_manual.ru.md'
+      - 'Docs/APRS_Digipeater_ru.md'
+      - 'Docs/VSWR-antennas.md'
+      - 'Docs/emission-types-radionerds-ru.md'
+      - 'Customer Programming Software/Disasm/APRS_symbols.md'
+      - 'Customer Programming Software/Disasm/README.md'
+      - 'Customer Programming Software/Disasm/aprs.md'
+      - 'Customer Programming Software/Disasm/gnss.md'
   workflow_dispatch:
 
 permissions:
@@ -20,5 +27,20 @@ jobs:
         uses: dkxce/md-auto-translator@main
         with:
           translate_paths: |
-            README.md
-          convert_skip: '**'
+            TD-H9_manual.ru.md
+            Docs/APRS_Digipeater_ru.md
+            Docs/VSWR-antennas.md
+            Docs/emission-types-radionerds-ru.md
+            Customer Programming Software/Disasm/APRS_symbols.md
+            Customer Programming Software/Disasm/README.md
+            Customer Programming Software/Disasm/aprs.md
+            Customer Programming Software/Disasm/gnss.md'
+          convert_paths: |
+            TD-H9_manual.ru.md
+            Docs/APRS_Digipeater_ru.md
+            Docs/VSWR-antennas.md
+            Docs/emission-types-radionerds-ru.md
+            Customer Programming Software/Disasm/APRS_symbols.md
+            Customer Programming Software/Disasm/README.md
+            Customer Programming Software/Disasm/aprs.md
+            Customer Programming Software/Disasm/gnss.md
