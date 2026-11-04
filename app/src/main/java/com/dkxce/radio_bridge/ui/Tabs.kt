@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import com.dkxce.radio_bridge.app.BridgeConfig
 import com.dkxce.radio_bridge.app.ServerMode
 import com.dkxce.radio_bridge.app.UiState
+import com.dkxce.radio_bridge.igate.IGateConfig
 
 @Composable
 fun DeviceTab(
@@ -259,5 +260,100 @@ fun AboutTab() {
         Text("Bridge between the TIDRadio TD-H9 radio (BLE APRS service 0000af00) and external "
             + "APRS applications via local TCP servers.",
             style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+/** IGate tab: settings + Start/Stop (mirrors Python igate.py). / Вкладка IGate. */
+@Composable
+fun IGateTab(
+    state: UiState,
+    onStartIGate: () -> Unit,
+    onStopIGate: () -> Unit,
+    onSaveIGateConfig: (IGateConfig) -> Unit,
+) {
+    val cfg = state.igateConfig
+    var client by remember(cfg.igateClient) { mutableStateOf(cfg.igateClient) }
+    var name by remember(cfg.igateName) { mutableStateOf(cfg.igateName) }
+    var pass by remember(cfg.passcode) { mutableStateOf(cfg.passcode.toString()) }
+    var server by remember(cfg.server) { mutableStateOf(cfg.server) }
+    var port by remember(cfg.port) { mutableStateOf(cfg.port.toString()) }
+    var filter by remember(cfg.filter) { mutableStateOf(cfg.filter) }
+    var checkTcpip by remember(cfg.checkTcpip) { mutableStateOf(cfg.checkTcpip) }
+    var checkNoQar by remember(cfg.checkNoQar) { mutableStateOf(cfg.checkNoQar) }
+    var checkNoQao by remember(cfg.checkNoQao) { mutableStateOf(cfg.checkNoQao) }
+
+    val collectCfg = {
+        IGateConfig(
+            igateClient = client.trim(),
+            igateName = name.trim(),
+            passcode = pass.toIntOrNull() ?: 0,
+            server = server.trim(),
+            port = port.toIntOrNull() ?: 14580,
+            filter = filter.trim(),
+            checkTcpip = checkTcpip,
+            checkNoQar = checkNoQar,
+            checkNoQao = checkNoQao,
+            enabled = true,
+        )
+    }
+
+    Column(
+        Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text("IGate (Radio <-> APRS-IS)", style = MaterialTheme.typography.titleMedium)
+
+        OutlinedTextField(value = client, onValueChange = { client = it },
+            label = { Text("APRSIS_CLIENT") }, singleLine = true)
+        OutlinedTextField(value = name, onValueChange = { name = it },
+            label = { Text("IGATE_NAME") }, singleLine = true)
+        OutlinedTextField(value = pass, onValueChange = { pass = it },
+            label = { Text("Passcode") }, singleLine = true,
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
+        OutlinedTextField(value = server, onValueChange = { server = it },
+            label = { Text("Server") }, singleLine = true)
+        OutlinedTextField(value = port, onValueChange = { port = it },
+            label = { Text("Port") }, singleLine = true,
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
+        OutlinedTextField(value = filter, onValueChange = { filter = it },
+            label = { Text("Filter (default d/<IGATE_NAME>*)") }, singleLine = true)
+
+        Row {
+            Checkbox(checked = checkTcpip, onCheckedChange = { checkTcpip = it })
+            Text("Require TCPIP", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically))
+        }
+        Row {
+            Checkbox(checked = checkNoQar, onCheckedChange = { checkNoQar = it })
+            Text("Reject qAR", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically))
+        }
+        Row {
+            Checkbox(checked = checkNoQao, onCheckedChange = { checkNoQao = it })
+            Text("Reject qAO", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically))
+        }
+
+        if (state.igateRunning) {
+            Button(onClick = onStopIGate,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error),
+                modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Filled.Stop, null)
+                Spacer(Modifier.width(6.dp))
+                Text("Stop IGate")
+            }
+            Text("IGate running", color = MaterialTheme.colorScheme.primary)
+        } else {
+            Button(onClick = {
+                onSaveIGateConfig(collectCfg())
+                onStartIGate()
+            }, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Filled.PlayArrow, null)
+                Spacer(Modifier.width(6.dp))
+                Text("Start IGate")
+            }
+            Text("IGate stopped", color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium)
+        }
     }
 }

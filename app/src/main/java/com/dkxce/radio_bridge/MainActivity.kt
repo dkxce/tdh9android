@@ -71,6 +71,13 @@ class MainActivity : ComponentActivity() {
                     onStopServer = {
                         startService(BridgeService.ACTION_STOP_SERVER)
                     },
+                    onStartIGate = {
+                        startService(BridgeService.ACTION_START_IGATE)
+                    },
+                    onStopIGate = {
+                        startService(BridgeService.ACTION_STOP_IGATE)
+                    },
+                    onSaveIGateConfig = viewModel::saveIGateConfig,
                     onSaveConfig = viewModel::saveConfig,
                     onClearLog = viewModel::clearLog,
                 )

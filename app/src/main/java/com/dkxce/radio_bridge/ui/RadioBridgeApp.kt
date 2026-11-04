@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.dkxce.radio_bridge.app.BridgeConfig
 import com.dkxce.radio_bridge.app.UiState
+import com.dkxce.radio_bridge.igate.IGateConfig
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,6 +34,9 @@ fun RadioBridgeApp(
     onStartServer: (BridgeConfig) -> Unit,
     onStopServer: () -> Unit,
     onSaveConfig: (BridgeConfig) -> Unit,
+    onStartIGate: () -> Unit,
+    onStopIGate: () -> Unit,
+    onSaveIGateConfig: (IGateConfig) -> Unit,
     onClearLog: () -> Unit,
 ) {
     var tab by remember { mutableStateOf(0) }
@@ -49,8 +53,10 @@ fun RadioBridgeApp(
                 NavigationBarItem(selected = tab == 1, onClick = { tab = 1 },
                     icon = { Icon(Icons.Filled.Settings, null) }, label = { Text("Server") })
                 NavigationBarItem(selected = tab == 2, onClick = { tab = 2 },
-                    icon = { Icon(Icons.Filled.Description, null) }, label = { Text("Log") })
+                    icon = { Icon(Icons.Filled.Cloud, null) }, label = { Text("IGate") })
                 NavigationBarItem(selected = tab == 3, onClick = { tab = 3 },
+                    icon = { Icon(Icons.Filled.Description, null) }, label = { Text("Log") })
+                NavigationBarItem(selected = tab == 4, onClick = { tab = 4 },
                     icon = { Icon(Icons.Filled.Info, null) }, label = { Text("About") })
             }
         }
@@ -59,8 +65,9 @@ fun RadioBridgeApp(
             when (tab) {
                 0 -> DeviceTab(state, isConnected, onScan, onConnect, onDisconnect)
                 1 -> ServerTab(state, onStartServer, onStopServer, onSaveConfig)
-                2 -> LogTab(state, onClearLog)
-                3 -> AboutTab()
+                2 -> IGateTab(state, onStartIGate, onStopIGate, onSaveIGateConfig)
+                3 -> LogTab(state, onClearLog)
+                4 -> AboutTab()
             }
         }
     }

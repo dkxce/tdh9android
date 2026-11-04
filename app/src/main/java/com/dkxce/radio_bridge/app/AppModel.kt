@@ -16,6 +16,7 @@ package com.dkxce.radio_bridge.app
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.dkxce.radio_bridge.igate.IGateConfig
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -47,6 +48,8 @@ data class UiState(
     val port: Int = 8023,
     val clients: Int = 0,
     val clientsList: List<String> = emptyList(),
+    val igateConfig: IGateConfig = IGateConfig(),
+    val igateRunning: Boolean = false,
     val log: List<String> = emptyList(),
 )
 
@@ -99,6 +102,43 @@ class AppModel private constructor(context: Context) {
         serverMode = ServerMode.valueOf(prefs.getString("server_mode", ServerMode.KISS.name)!!),
         port = prefs.getInt("port", 8023),
     )
+
+    // --- IGate settings (persisted, mirrors Python igate.py) ---
+
+    fun saveIGateConfig(cfg: IGateConfig) {
+        prefs.edit()
+            .putString("igate_client", cfg.igateClient)
+            .putString("igate_name", cfg.igateName)
+            .putInt("igate_passcode", cfg.passcode)
+            .putString("igate_server", cfg.server)
+            .putInt("igate_port", cfg.port)
+            .putString("igate_filter", cfg.filter)
+            .putBoolean("igate_check_tcpip", cfg.checkTcpip)
+            .putBoolean("igate_check_no_qar", cfg.checkNoQar)
+            .putBoolean("igate_check_no_qao", cfg.checkNoQao)
+            .putBoolean("igate_enabled", cfg.enabled)
+            .apply()
+        _ui.value = _ui.value.copy(igateConfig = cfg)
+    }
+
+    fun loadIGateConfig(): IGateConfig {
+        val cfg = IGateConfig(
+            igateClient = prefs.getString("igate_client", "NOCALL-10")!!,
+            igateName = prefs.getString("igate_name", "NOCALL-1")!!,
+            passcode = prefs.getInt("igate_passcode", 0),
+            server = prefs.getString("igate_server", "rotate.aprs2.net")!!,
+            port = prefs.getInt("igate_port", 14580),
+            filter = prefs.getString("igate_filter", "")!!,
+            checkTcpip = prefs.getBoolean("igate_check_tcpip", true),
+            checkNoQar = prefs.getBoolean("igate_check_no_qar", true),
+            checkNoQao = prefs.getBoolean("igate_check_no_qao", true),
+            enabled = prefs.getBoolean("igate_enabled", false),
+        )
+        _ui.value = _ui.value.copy(igateConfig = cfg)
+        return cfg
+    }
+
+    fun setIGateRunning(running: Boolean) { _ui.value = _ui.value.copy(igateRunning = running) }
 
     // --- UI state mutators (called from ViewModel/service) ---
 

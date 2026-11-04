@@ -34,6 +34,7 @@ import com.dkxce.radio_bridge.core.Ax25
 import com.dkxce.radio_bridge.net.AgwTcpServer
 import com.dkxce.radio_bridge.net.AprsIsTcpServer
 import com.dkxce.radio_bridge.net.KissTcpServer
+import com.dkxce.radio_bridge.igate.IGateClient
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -48,6 +49,7 @@ class BridgeService : Service() {
     private var kissServer: KissTcpServer? = null
     private var agwServer: AgwTcpServer? = null
     private var aprsServer: AprsIsTcpServer? = null
+    private var igate: IGateClient? = null
     private val running = AtomicBoolean(false)
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -64,6 +66,7 @@ class BridgeService : Service() {
     override fun onDestroy() {
         running.set(false)
         stopServers()
+        stopIGate()
         ble?.disconnect()
         ble = null
         super.onDestroy()
@@ -100,6 +103,8 @@ class BridgeService : Service() {
                 intent.getIntExtra(EXTRA_PORT, -1),
             )
             ACTION_STOP_SERVER -> stopServers()
+            ACTION_START_IGATE -> startIGate()
+            ACTION_STOP_IGATE -> stopIGate()
             ACTION_SEND_RADIO -> {
                 val data = intent.getByteArrayExtra(EXTRA_KISS)
                 if (data != null) sendToRadio(data)
@@ -223,10 +228,14 @@ class BridgeService : Service() {
         val text = Ax25.toAprsText(raw)
         model.appendLog("[RX] $text")
         // This runs on the main thread (BLE notify callback). Sending to TCP
-        // sockets must happen off the main thread or Android throws
-        // NetworkOnMainThreadException. Forward on a background thread.
+        // sockets (IGate radio->net and the server broadcasts) must happen off
+        // the main thread or Android throws NetworkOnMainThreadException,
+        // which also corrupted frames on the receiving radios.
         Thread {
             try {
+                // Rule (b): send the received radio frame into the IGate
+                // (radio -> net) on a background thread, like Python.
+                try { igate?.radioRx(text) } catch (e: Exception) { model.appendLog("[IGate!] radioRx: $e") }
                 val n = currentClientCount()
                 if (n == 0) {
                     model.appendLog("[RX] no TCP clients connected, skip broadcast")
@@ -244,6 +253,43 @@ class BridgeService : Service() {
     private fun sendToRadio(ax25Payload: ByteArray) {
         val kissFrame = Kiss.frame(ax25Payload)
         ble?.sendKiss(kissFrame)
+    }
+
+    // ------------------------------------------------------------------ IGate
+    private fun startIGate() {
+        val cfg = model.loadIGateConfig().copy(enabled = true)
+        model.saveIGateConfig(cfg)
+        if (igate == null) {
+            igate = IGateClient(
+                cfg = cfg,
+                onRxToRadio = { text ->
+                    // Network -> Radio (rule a). Transmit the gated packet over
+                    // the radio. Mirror Python igate.py: encode the APRS text
+                    // back into a binary AX.25 UI-frame, then KISS-frame it.
+                    // Log handled inside IGate client.
+                    try {
+                        val ax25 = Ax25.encodeText(text)
+                        model.appendLog("[IGate -> radio] $text")
+                        sendToRadio(ax25)
+                    } catch (e: Exception) {
+                        model.appendLog("[IGate!] encode/tx failed: $e")
+                    }
+                },
+                onLog = { msg -> model.appendLog(msg) },
+            )
+        } else {
+            igate?.updateConfig(cfg)
+        }
+        igate?.start()
+        model.setIGateRunning(true)
+        model.appendLog("[IGate] started")
+    }
+
+    private fun stopIGate() {
+        igate?.stop()
+        igate = null
+        model.setIGateRunning(false)
+        model.appendLog("[IGate] stopped")
     }
 
     // ------------------------------------------------------------------ notification
@@ -276,6 +322,8 @@ class BridgeService : Service() {
         const val ACTION_DISCONNECT = "com.dkxce.radio_bridge.ACTION_DISCONNECT"
         const val ACTION_START_SERVER = "com.dkxce.radio_bridge.ACTION_START_SERVER"
         const val ACTION_STOP_SERVER = "com.dkxce.radio_bridge.ACTION_STOP_SERVER"
+        const val ACTION_START_IGATE = "com.dkxce.radio_bridge.ACTION_START_IGATE"
+        const val ACTION_STOP_IGATE = "com.dkxce.radio_bridge.ACTION_STOP_IGATE"
         const val ACTION_SEND_RADIO = "com.dkxce.radio_bridge.ACTION_SEND_RADIO"
         const val EXTRA_ADDR = "addr"
         const val EXTRA_KISS = "kiss"

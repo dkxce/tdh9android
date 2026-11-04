@@ -100,7 +100,15 @@ class AprsIsTcpServer(
         if (c.callsign.isNotEmpty()) {
             // comments never go to the radio
             if (!text.startsWith("#") && text.isNotEmpty()) {
-                onTx(text.toByteArray(Charsets.UTF_8))
+                // Mirror Python _client_tx_aprs: encode the text APRS frame back
+                // into a binary AX.25 UI-frame before transmitting to the radio.
+                // Sending the raw UTF-8 text bytes produced garbage on the
+                // receiving radios.
+                try {
+                    onTx(Ax25.encodeText(text))
+                } catch (e: Exception) {
+                    onLog?.invoke("[APRS!] failed to build frame: ${e.message}")
+                }
             }
         }
     }
