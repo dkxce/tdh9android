@@ -95,6 +95,7 @@ Android Studio.
 | [**KMZViewer**](https://github.com/dkxce/KMZViewer) | KISS / AGW / APRS-IS | по настройке |
 | [**APRSWin**](https://github.com/dkxce/APRSWin) | Binary KISS / AGW | 8023 / 8000 |
 | [**APRSAir**](https://github.com/dkxce/APRSAIR) | KISS / AGW / APRS-IS | по настройке |
+| [**SimpleAPRSServer**](https://github.com/dkxce/SimpleAPRSServer) | APRS-IS | по настройке |
 
 > Программы, умеющие **AGWPE** — ставьте режим AGW (8000); ожидающие **KISS-TNC**
 > по TCP — Binary KISS (8023); сетевые APRS-IS — APRS-IS (14580).
