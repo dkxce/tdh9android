@@ -72,7 +72,12 @@ data class ProxyConfig(
     val radioToInternet: Boolean = false,      // radio -> internet        (IGate qAR)
     val internetToRadio: Boolean = false,      // internet -> radio        (as-is)
     val clientsToRadio: Boolean = true,        // local client -> radio    (as-is)
+    val clientsToInternet: Boolean = true,     // local client -> internet (as-is)
+    val internetToClients: Boolean = true,     // internet -> local clients (as-is)
     val applyQar: Boolean = true,              // add ,qAR,<IGATE_NAME> on radio->out
+    // ----- live packet cache handed to APRS clients on connect -----
+    val radioToClientsCache: Boolean = true,   // cache radio packets for APRS client reconnect
+    val internetToClientsCache: Boolean = false, // cache internet packets for APRS client reconnect
     // ----- AIS feed (read-only NMEA to AIS clients) -----
     val aisEnabled: Boolean = false,           // AIS feature switch
     val aisPort: Int = 10110,                  // AIS TCP listen port
@@ -138,6 +143,10 @@ class AprsIsProxyClient(
     private data class Cached(val payload: String, val expiry: Long)
     private val cache = ConcurrentHashMap.newKeySet<Cached>()
     private val cacheLock = Any()
+
+    // packet cache handed to local APRS clients on connect (raw APRS lines)
+    private val clientCache = ConcurrentHashMap.newKeySet<Cached>()
+    private val clientCacheLock = Any()
 
     private val executor = Executors.newCachedThreadPool { r ->
         Thread(r).apply { isDaemon = true }
@@ -254,6 +263,7 @@ fun clearPacketLog() {
         upstreamThread?.join(2000); upstreamThread = null
         idleThread?.join(2000); idleThread = null
         synchronized(cacheLock) { cache.clear() }
+        synchronized(clientCacheLock) { clientCache.clear() }
         upstreamConnected = false
         onLog.log("[Proxy] stopped")
     }
@@ -298,6 +308,8 @@ fun clearPacketLog() {
         pushPacket("RX<-radio", corrected)
         // radio -> local clients (IGate-corrected)
         if (cfg.radioToClients) broadcastToClients(corrected)
+        // cache radio packet for client reconnects when enabled
+        if (cfg.radioToClientsCache) cacheClientPacket(corrected)
         // radio -> internet (IGate-corrected); buffered on disconnect
         if (cfg.radioToInternet) sendToInternet(corrected)
         // radio -> AIS (position objects feed for AIS clients)
@@ -448,6 +460,8 @@ fun clearPacketLog() {
             val reader = BufferedReader(InputStreamReader(cl.socket.getInputStream(), Charsets.UTF_8))
             val out = cl.socket.getOutputStream()
             sendLine(out, "# ${cfg.igateName} APRS bridge: connection accepted")
+            // hand the cached radio/internet packets to the newly connected client
+            sendClientCache(out)
             while (running) {
                 val line = reader.readLine() ?: break
                 val text = line.trim()
@@ -486,7 +500,7 @@ fun clearPacketLog() {
         synchronized(statsLock) { rxClients++ }
         pushPacket("RX<-client", text)
         // client -> internet (as-is); buffered on disconnect
-        sendToInternet(text)
+        if (cfg.clientsToInternet) sendToInternet(text)
         // client -> radio (as-is)
         if (cfg.clientsToRadio) {
             try { onTxToRadio.onText(text) } catch (_: Exception) { }
@@ -631,7 +645,9 @@ fun clearPacketLog() {
         synchronized(statsLock) { rxInternet++ }
         pushPacket("RX<-internet", text)
         // internet -> all local clients (as-is)
-        broadcastToClients(text)
+        if (cfg.internetToClients) broadcastToClients(text)
+        // cache internet packet for client reconnects when enabled
+        if (cfg.internetToClientsCache) cacheClientPacket(text)
         // internet -> radio (as-is)
         if (cfg.internetToRadio) {
             try { onTxToRadio.onText(text) } catch (_: Exception) { }
@@ -661,6 +677,29 @@ fun clearPacketLog() {
         try {
             out.write((s + "\r\n").toByteArray()); out.flush()
         } catch (_: Exception) { }
+    }
+
+    /** Cache a raw APRS packet to hand to local clients on (re)connect. */
+    private fun cacheClientPacket(text: String) {
+        synchronized(clientCacheLock) {
+            clientCache.add(Cached(text, System.currentTimeMillis() + cfg.cacheSeconds * 1000))
+        }
+    }
+
+    /** Send all cached, still-fresh packets to a newly connected local client. */
+    private fun sendClientCache(out: OutputStream) {
+        if (clientCache.isEmpty()) return
+        val now = System.currentTimeMillis()
+        val toSend = mutableListOf<String>()
+        synchronized(clientCacheLock) {
+            val it = clientCache.iterator()
+            while (it.hasNext()) {
+                val c = it.next()
+                if (c.expiry <= now) { it.remove(); continue }
+                toSend.add(c.payload); it.remove()
+            }
+        }
+        for (p in toSend) sendLine(out, p)
     }
 
     /** Send a packet toward the internet; on disconnect buffer it (capped). */

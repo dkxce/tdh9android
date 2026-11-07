@@ -299,6 +299,10 @@ fun ProxyTab(
     var radioToInternet by remember(pcfg.radioToInternet) { mutableStateOf(pcfg.radioToInternet) }
     var internetToRadio by remember(pcfg.internetToRadio) { mutableStateOf(pcfg.internetToRadio) }
     var clientsToRadio by remember(pcfg.clientsToRadio) { mutableStateOf(pcfg.clientsToRadio) }
+    var clientsToInternet by remember(pcfg.clientsToInternet) { mutableStateOf(pcfg.clientsToInternet) }
+    var internetToClients by remember(pcfg.internetToClients) { mutableStateOf(pcfg.internetToClients) }
+    var radioToClientsCache by remember(pcfg.radioToClientsCache) { mutableStateOf(pcfg.radioToClientsCache) }
+    var internetToClientsCache by remember(pcfg.internetToClientsCache) { mutableStateOf(pcfg.internetToClientsCache) }
     var applyQar by remember(pcfg.applyQar) { mutableStateOf(pcfg.applyQar) }
     var pingSeconds by remember(pcfg.pingSeconds) { mutableStateOf(pcfg.pingSeconds.toString()) }
     var cacheSeconds by remember(pcfg.cacheSeconds) { mutableStateOf(pcfg.cacheSeconds.toString()) }
@@ -324,6 +328,10 @@ fun ProxyTab(
             radioToInternet = radioToInternet,
             internetToRadio = internetToRadio,
             clientsToRadio = clientsToRadio,
+            clientsToInternet = clientsToInternet,
+            internetToClients = internetToClients,
+            radioToClientsCache = radioToClientsCache,
+            internetToClientsCache = internetToClientsCache,
             applyQar = applyQar,
             pingSeconds = pingSeconds.toLongOrNull() ?: 90,
             cacheSeconds = cacheSeconds.toLongOrNull() ?: 90,
@@ -343,6 +351,7 @@ fun ProxyTab(
     LaunchedEffect(
         callsign, pass, server, serverPort, listenPort, filter, igateName, source,
         radioToClients, radioToInternet, internetToRadio, clientsToRadio, applyQar,
+        clientsToInternet, internetToClients, radioToClientsCache, internetToClientsCache,
         pingSeconds, cacheSeconds, idleTimeoutSeconds, aisEnabled, aisPort,
         radioToAis, internetToAis, radioToAisCache, internetToAisCache,
     ) {
@@ -400,6 +409,14 @@ fun ProxyTab(
             Text("internet -> radio", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
         Row { Checkbox(checked = clientsToRadio, onCheckedChange = { clientsToRadio = it })
             Text("clients -> radio", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
+        Row { Checkbox(checked = clientsToInternet, onCheckedChange = { clientsToInternet = it })
+            Text("clients -> internet", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
+        Row { Checkbox(checked = internetToClients, onCheckedChange = { internetToClients = it })
+            Text("internet -> clients", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
+        Row { Checkbox(checked = radioToClientsCache, onCheckedChange = { radioToClientsCache = it })
+            Text("radio -> clients cache", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
+        Row { Checkbox(checked = internetToClientsCache, onCheckedChange = { internetToClientsCache = it })
+            Text("internet -> clients cache", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
         Row { Checkbox(checked = applyQar, onCheckedChange = { applyQar = it })
             Text("apply ,qAR,<IGATE_NAME> on radio out", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
 

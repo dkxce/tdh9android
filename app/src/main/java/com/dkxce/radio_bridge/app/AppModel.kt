@@ -162,7 +162,10 @@ class AppModel private constructor(context: Context) {
             .putBoolean("proxy_radio_to_internet", cfg.radioToInternet)
             .putBoolean("proxy_internet_to_radio", cfg.internetToRadio)
             .putBoolean("proxy_clients_to_radio", cfg.clientsToRadio)
+            .putBoolean("proxy_clients_to_internet", cfg.clientsToInternet)
             .putBoolean("proxy_apply_qar", cfg.applyQar)
+            .putBoolean("proxy_radio_to_clients_cache", cfg.radioToClientsCache)
+            .putBoolean("proxy_internet_to_clients_cache", cfg.internetToClientsCache)
             .putLong("proxy_ping_seconds", cfg.pingSeconds)
             .putLong("proxy_cache_seconds", cfg.cacheSeconds)
             .putLong("proxy_idle_timeout_seconds", cfg.idleTimeoutSeconds)
@@ -195,7 +198,10 @@ class AppModel private constructor(context: Context) {
             radioToInternet = prefs.getBoolean("proxy_radio_to_internet", false),
             internetToRadio = prefs.getBoolean("proxy_internet_to_radio", false),
             clientsToRadio = prefs.getBoolean("proxy_clients_to_radio", true),
+            clientsToInternet = prefs.getBoolean("proxy_clients_to_internet", true),
             applyQar = prefs.getBoolean("proxy_apply_qar", true),
+            radioToClientsCache = prefs.getBoolean("proxy_radio_to_clients_cache", true),
+            internetToClientsCache = prefs.getBoolean("proxy_internet_to_clients_cache", false),
             pingSeconds = prefs.getLong("proxy_ping_seconds", 90),
             cacheSeconds = prefs.getLong("proxy_cache_seconds", 90),
             idleTimeoutSeconds = prefs.getLong("proxy_idle_timeout_seconds", 300),
