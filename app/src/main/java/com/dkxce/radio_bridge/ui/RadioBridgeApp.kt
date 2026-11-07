@@ -42,6 +42,7 @@ fun RadioBridgeApp(
     onStopProxy: () -> Unit,
     onSaveProxyConfig: (ProxyConfig) -> Unit,
     onResetProxyStats: () -> Unit,
+    onClearProxyLog: () -> Unit,
     onClearLog: () -> Unit,
     onExitApp: () -> Unit,
 ) {
@@ -74,7 +75,7 @@ fun RadioBridgeApp(
                 0 -> DeviceTab(state, isConnected, onScan, onConnect, onDisconnect)
                 1 -> ServerTab(state, onStartServer, onStopServer, onSaveConfig)
                 2 -> IGateTab(state, onStartIGate, onStopIGate, onSaveIGateConfig)
-                3 -> ProxyTab(state, onStartProxy, onStopProxy, onSaveProxyConfig, onResetProxyStats)
+                3 -> ProxyTab(state, onStartProxy, onStopProxy, onSaveProxyConfig, onResetProxyStats, onClearProxyLog)
                 4 -> LogTab(state, onClearLog)
                 5 -> AboutTab(onExitApp)
             }

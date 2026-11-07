@@ -89,6 +89,9 @@ class MainActivity : ComponentActivity() {
                     onResetProxyStats = {
                         startService(BridgeService.ACTION_RESET_PROXY_STATS)
                     },
+                    onClearProxyLog = {
+                        startService(BridgeService.ACTION_CLEAR_PROXY_LOG)
+                    },
                     onSaveConfig = viewModel::saveConfig,
                     onClearLog = viewModel::clearLog,
                     onExitApp = { finishAffinity(); exitProcess(0) },

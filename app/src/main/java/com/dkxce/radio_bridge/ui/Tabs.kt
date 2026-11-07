@@ -284,6 +284,7 @@ fun ProxyTab(
     onStopProxy: () -> Unit,
     onSaveProxyConfig: (ProxyConfig) -> Unit,
     onResetProxyStats: () -> Unit,
+    onClearProxyLog: () -> Unit,
 ) {
     val pcfg = state.proxyConfig
     var callsign by remember(pcfg.callsign) { mutableStateOf(pcfg.callsign) }
@@ -449,7 +450,11 @@ fun ProxyTab(
 
             // packet log (last 20)
             if (s.packetsLog.isNotEmpty()) {
-                Text("Last packets:", style = MaterialTheme.typography.labelLarge)
+                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Text("Last packets:", style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.weight(1f))
+                    TextButton(onClick = onClearProxyLog) { Text("Clear") }
+                }
                 s.packetsLog.take(20).forEach { p ->
                     Text(p, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                         style = MaterialTheme.typography.bodySmall,

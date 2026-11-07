@@ -163,9 +163,16 @@ class AprsIsProxyClient(
         onStatsChanged?.invoke()
     }
 
+    /** Clear only the packet log (keep counters). */
+    fun clearPacketLog() {
+        synchronized(statsLock) { packetsLog.clear() }
+        onStatsChanged?.invoke()
+    }
+
     private fun pushPacket(direction: String, text: String) {
-        // Russian: добавляем метку направления и строку пакета в лог (обрезка).
-        val line = "[$direction] $text"
+        // Russian: добавляем временную метку, направление и строку пакета в лог (обрезка).
+        val stamp = java.time.LocalTime.now().withNano(0).toString() // HH:mm:ss
+        val line = "$stamp [$direction] $text"
         synchronized(statsLock) {
             packetsLog.addFirst(line)
             while (packetsLog.size > 20) packetsLog.removeLast()
