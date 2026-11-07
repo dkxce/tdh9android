@@ -41,19 +41,38 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { /* ignore result; user can retry via button */ }
 
+    private enum class SettingsAction { EXPORT, IMPORT }
+    private var pendingSettingsAction: SettingsAction? = null
+
     private val settingsFolderLauncher = registerForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
     ) { uri: Uri? ->
+        val action = pendingSettingsAction ?: return@registerForActivityResult
+        pendingSettingsAction = null
         if (uri != null) {
+            // keep read/write access for future exports into the same folder
             runCatching {
                 contentResolver.takePersistableUriPermission(
                     uri,
                     Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
                 )
             }
-            getSharedPreferences("radio_bridge", Context.MODE_PRIVATE)
-                .edit().putString("settings_folder_uri", uri.toString()).apply()
-            viewModel.appendLog("[Settings] folder selected: $uri")
+            when (action) {
+                SettingsAction.EXPORT -> {
+                    runCatching {
+                        viewModel.exportSettingsToFolder(uri.toString())
+                        viewModel.appendLog("[Settings] exported: $uri/settings.json")
+                    }.onFailure { viewModel.appendLog("[Settings!] export failed: $it") }
+                }
+                SettingsAction.IMPORT -> {
+                    runCatching {
+                        viewModel.importSettingsFromFolder(uri.toString())
+                        viewModel.appendLog("[Settings] imported: $uri/settings.json")
+                    }.onFailure { viewModel.appendLog("[Settings!] import failed: $it") }
+                }
+            }
+        } else {
+            viewModel.appendLog("[Settings] folder selection cancelled")
         }
     }
 
@@ -116,30 +135,12 @@ class MainActivity : ComponentActivity() {
                     onClearLog = viewModel::clearLog,
                     onExitApp = { finishAffinity(); exitProcess(0) },
                     onExportSettings = {
-                        val uri = getSharedPreferences("radio_bridge", Context.MODE_PRIVATE)
-                            .getString("settings_folder_uri", null)
-                        if (uri == null) {
-                            viewModel.appendLog("[Settings] select a folder first")
-                            settingsFolderLauncher.launch(null)
-                        } else {
-                            runCatching {
-                                viewModel.exportSettingsToFolder(uri)
-                                viewModel.appendLog("[Settings] exported to selected folder")
-                            }.onFailure { viewModel.appendLog("[Settings!] export failed: $it") }
-                        }
+                        pendingSettingsAction = SettingsAction.EXPORT
+                        settingsFolderLauncher.launch(null)
                     },
                     onImportSettings = {
-                        val uri = getSharedPreferences("radio_bridge", Context.MODE_PRIVATE)
-                            .getString("settings_folder_uri", null)
-                        if (uri == null) {
-                            viewModel.appendLog("[Settings] select a folder first")
-                            settingsFolderLauncher.launch(null)
-                        } else {
-                            runCatching {
-                                viewModel.importSettingsFromFolder(uri)
-                                viewModel.appendLog("[Settings] imported from selected folder")
-                            }.onFailure { viewModel.appendLog("[Settings!] import failed: $it") }
-                        }
+                        pendingSettingsAction = SettingsAction.IMPORT
+                        settingsFolderLauncher.launch(null)
                     },
                 )
             }
