@@ -43,6 +43,7 @@ fun RadioBridgeApp(
     onSaveProxyConfig: (ProxyConfig) -> Unit,
     onResetProxyStats: () -> Unit,
     onClearLog: () -> Unit,
+    onExitApp: () -> Unit,
 ) {
     var tab by remember { mutableStateOf(0) }
     val isConnected = state.connectedAddress != null
@@ -75,7 +76,7 @@ fun RadioBridgeApp(
                 2 -> IGateTab(state, onStartIGate, onStopIGate, onSaveIGateConfig)
                 3 -> ProxyTab(state, onStartProxy, onStopProxy, onSaveProxyConfig, onResetProxyStats)
                 4 -> LogTab(state, onClearLog)
-                5 -> AboutTab()
+                5 -> AboutTab(onExitApp)
             }
         }
     }

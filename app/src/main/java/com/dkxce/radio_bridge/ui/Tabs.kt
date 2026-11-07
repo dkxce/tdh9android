@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -225,7 +226,7 @@ fun LogTab(state: UiState, onClearLog: () -> Unit) {
 
 /** About tab: program author and info. / О программе. */
 @Composable
-fun AboutTab() {
+fun AboutTab(onExitApp: () -> Unit) {
     val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
     @Composable
     fun link(url: String, label: String) {
@@ -264,6 +265,14 @@ fun AboutTab() {
         Text("Bridge between the TIDRadio TD-H9 radio (BLE APRS service 0000af00) and external "
             + "APRS applications via local TCP servers.",
             style = MaterialTheme.typography.bodySmall)
+        Spacer(Modifier.height(16.dp))
+        Button(
+            onClick = onExitApp,
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Icon(Icons.Filled.ExitToApp, null); Spacer(Modifier.width(6.dp)); Text("Exit application")
+        }
     }
 }
 
@@ -280,7 +289,8 @@ fun ProxyTab(
     var callsign by remember(pcfg.callsign) { mutableStateOf(pcfg.callsign) }
     var pass by remember(pcfg.passcode) { mutableStateOf(pcfg.passcode.toString()) }
     var server by remember(pcfg.server) { mutableStateOf(pcfg.server) }
-    var port by remember(pcfg.port) { mutableStateOf(pcfg.port.toString()) }
+    var serverPort by remember(pcfg.serverPort) { mutableStateOf(pcfg.serverPort.toString()) }
+    var listenPort by remember(pcfg.listenPort) { mutableStateOf(pcfg.listenPort.toString()) }
     var filter by remember(pcfg.filter) { mutableStateOf(pcfg.filter) }
     var igateName by remember(pcfg.igateName) { mutableStateOf(pcfg.igateName) }
     var source by remember(pcfg.source) { mutableStateOf(pcfg.source) }
@@ -300,7 +310,8 @@ fun ProxyTab(
             callsign = callsign.trim(),
             passcode = pass.toIntOrNull() ?: 0,
             server = server.trim(),
-            port = port.toIntOrNull() ?: 14580,
+            serverPort = serverPort.toIntOrNull() ?: 14580,
+            listenPort = listenPort.toIntOrNull() ?: 14580,
             filter = filter.trim(),
             igateName = igateName.trim(),
             source = source,
@@ -318,6 +329,16 @@ fun ProxyTab(
         )
     }
 
+    // Auto-save settings on every field change (Russian: автоматическое
+    // сохранение настроек при любом изменении поля).
+    LaunchedEffect(
+        callsign, pass, server, serverPort, listenPort, filter, igateName, source,
+        radioToClients, radioToInternet, internetToRadio, clientsToRadio, applyQar,
+        pingSeconds, cacheSeconds, idleTimeoutSeconds, aisEnabled, aisPort,
+    ) {
+        onSaveProxyConfig(collectCfg())
+    }
+
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -332,8 +353,12 @@ fun ProxyTab(
                 keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
         OutlinedTextField(value = server, onValueChange = { server = it },
             label = { Text("Server") }, singleLine = true)
-        OutlinedTextField(value = port, onValueChange = { port = it },
-            label = { Text("Port") }, singleLine = true,
+        OutlinedTextField(value = serverPort, onValueChange = { serverPort = it },
+            label = { Text("Server port (upstream APRS-IS)") }, singleLine = true,
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
+        OutlinedTextField(value = listenPort, onValueChange = { listenPort = it },
+            label = { Text("Client port (local listener)") }, singleLine = true,
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                 keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
         OutlinedTextField(value = filter, onValueChange = { filter = it },

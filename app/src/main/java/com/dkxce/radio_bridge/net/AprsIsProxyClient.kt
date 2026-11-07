@@ -62,14 +62,15 @@ data class ProxyConfig(
     val callsign: String = "NOCALL-10",
     val passcode: Int = 0,                     // 0 => computed from callsign
     val server: String = "rotate.aprs2.net",
-    val port: Int = 14580,
+    val serverPort: Int = 14580,             // upstream APRS-IS internet server port
+    val listenPort: Int = 14580,             // local listener port for clients
     val filter: String = "",
     val igateName: String = "NOCALL-1",        // used for ,qAR,<IGATE_NAME> correction
     val source: ProxySource = ProxySource.LAST_CLIENT,
     // ----- forwarding switches -----
     val radioToClients: Boolean = true,        // radio -> local clients   (IGate qAR)
-    val radioToInternet: Boolean = true,       // radio -> internet        (IGate qAR)
-    val internetToRadio: Boolean = true,       // internet -> radio        (as-is)
+    val radioToInternet: Boolean = false,      // radio -> internet        (IGate qAR)
+    val internetToRadio: Boolean = false,      // internet -> radio        (as-is)
     val clientsToRadio: Boolean = true,        // local client -> radio    (as-is)
     val applyQar: Boolean = true,              // add ,qAR,<IGATE_NAME> on radio->out
     // ----- AIS (not implemented yet; stored for future use) -----
@@ -207,7 +208,7 @@ class AprsIsProxyClient(
         // it is needed; kick the first connection right away.
         executor.execute { ensureUpstream() }
         idleThread = Thread(::idleLoop).apply { isDaemon = true; start() }
-        onLog.log("[Proxy] started (server :$cfg.port)")
+        onLog.log("[Proxy] started (server :${cfg.listenPort})")
     }
 
     fun stop() {
@@ -238,9 +239,9 @@ class AprsIsProxyClient(
         val loginChanged = effectiveLoginForUpstream() != null &&
             prev.source != cfg.source ||
             prev.callsign != cfg.callsign || prev.passcode != cfg.passcode ||
-            prev.server != cfg.server || prev.port != cfg.port ||
+            prev.server != cfg.server || prev.serverPort != cfg.serverPort ||
             prev.filter != cfg.filter
-        if (prev.port != cfg.port) {
+        if (prev.listenPort != cfg.listenPort) {
             // local listen port changed -> rebuild local server
             synchronized(lock) {
                 try { serverSocket?.close() } catch (_: Exception) { }
@@ -273,12 +274,12 @@ class AprsIsProxyClient(
     private fun startLocalServer() {
         if (!running) return
         try {
-            val ss = ServerSocket(cfg.port)
+            val ss = ServerSocket(cfg.listenPort)
             ss.reuseAddress = true
             synchronized(lock) { serverSocket = ss }
             acceptThread = Thread(::acceptLoop, "proxy-accept").apply { isDaemon = true; start() }
         } catch (e: Exception) {
-            onLog.log("[Proxy!] listen failed on :${cfg.port}: ${e.message}")
+            onLog.log("[Proxy!] listen failed on :${cfg.listenPort}: ${e.message}")
         }
     }
 
@@ -421,7 +422,7 @@ class AprsIsProxyClient(
         if (!running) return
 
         val server = cfg.server
-        val port = cfg.port
+        val port = cfg.serverPort
         effectiveCallsign = callsign
         onLog.log("[Proxy] connecting upstream $callsign@$server:$port (filter $filter)")
 

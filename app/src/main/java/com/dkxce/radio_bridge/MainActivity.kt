@@ -30,6 +30,7 @@ import androidx.core.content.ContextCompat
 import com.dkxce.radio_bridge.app.MainViewModel
 import com.dkxce.radio_bridge.service.BridgeService
 import com.dkxce.radio_bridge.ui.RadioBridgeApp
+import kotlin.system.exitProcess
 
 class MainActivity : ComponentActivity() {
 
@@ -90,6 +91,7 @@ class MainActivity : ComponentActivity() {
                     },
                     onSaveConfig = viewModel::saveConfig,
                     onClearLog = viewModel::clearLog,
+                    onExitApp = { finishAffinity(); exitProcess(0) },
                 )
             }
         }
