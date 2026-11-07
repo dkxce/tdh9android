@@ -325,7 +325,7 @@ fun ProxyTab(
             cacheSeconds = cacheSeconds.toLongOrNull() ?: 90,
             idleTimeoutSeconds = idleTimeoutSeconds.toLongOrNull() ?: 300,
             aisEnabled = aisEnabled,
-            aisPort = aisPort.toIntOrNull() ?: 0,
+            aisPort = aisPort.toIntOrNull() ?: 10110,
             enabled = true,
         )
     }

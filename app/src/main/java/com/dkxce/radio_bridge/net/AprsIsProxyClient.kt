@@ -75,7 +75,7 @@ data class ProxyConfig(
     val applyQar: Boolean = true,              // add ,qAR,<IGATE_NAME> on radio->out
     // ----- AIS (not implemented yet; stored for future use) -----
     val aisEnabled: Boolean = false,           // AIS feature switch (UI only)
-    val aisPort: Int = 0,                      // AIS UDP/TCP port (UI only)
+    val aisPort: Int = 10110,                  // AIS UDP/TCP port (UI only)
     // ----- timing -----
     val pingSeconds: Long = 90,                // upstream keepalive comment interval
     val cacheSeconds: Long = 90,               // buffer outbound-internet on disconnect

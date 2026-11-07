@@ -196,7 +196,7 @@ class AppModel private constructor(context: Context) {
             cacheSeconds = prefs.getLong("proxy_cache_seconds", 90),
             idleTimeoutSeconds = prefs.getLong("proxy_idle_timeout_seconds", 300),
             aisEnabled = prefs.getBoolean("proxy_ais_enabled", false),
-            aisPort = prefs.getInt("proxy_ais_port", 0),
+            aisPort = prefs.getInt("proxy_ais_port", 10110),
             enabled = prefs.getBoolean("proxy_enabled", false),
         )
         _ui.value = _ui.value.copy(proxyConfig = cfg)
