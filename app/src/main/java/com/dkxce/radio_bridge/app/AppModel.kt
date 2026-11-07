@@ -168,6 +168,10 @@ class AppModel private constructor(context: Context) {
             .putLong("proxy_idle_timeout_seconds", cfg.idleTimeoutSeconds)
             .putBoolean("proxy_ais_enabled", cfg.aisEnabled)
             .putInt("proxy_ais_port", cfg.aisPort)
+            .putBoolean("proxy_radio_to_ais", cfg.radioToAis)
+            .putBoolean("proxy_internet_to_ais", cfg.internetToAis)
+            .putBoolean("proxy_radio_to_ais_cache", cfg.radioToAisCache)
+            .putBoolean("proxy_internet_to_ais_cache", cfg.internetToAisCache)
             .putBoolean("proxy_enabled", cfg.enabled)
             .apply()
         _ui.value = _ui.value.copy(proxyConfig = cfg)
@@ -197,6 +201,10 @@ class AppModel private constructor(context: Context) {
             idleTimeoutSeconds = prefs.getLong("proxy_idle_timeout_seconds", 300),
             aisEnabled = prefs.getBoolean("proxy_ais_enabled", false),
             aisPort = prefs.getInt("proxy_ais_port", 10110),
+            radioToAis = prefs.getBoolean("proxy_radio_to_ais", true),
+            internetToAis = prefs.getBoolean("proxy_internet_to_ais", false),
+            radioToAisCache = prefs.getBoolean("proxy_radio_to_ais_cache", true),
+            internetToAisCache = prefs.getBoolean("proxy_internet_to_ais_cache", false),
             enabled = prefs.getBoolean("proxy_enabled", false),
         )
         _ui.value = _ui.value.copy(proxyConfig = cfg)

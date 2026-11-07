@@ -73,9 +73,13 @@ data class ProxyConfig(
     val internetToRadio: Boolean = false,      // internet -> radio        (as-is)
     val clientsToRadio: Boolean = true,        // local client -> radio    (as-is)
     val applyQar: Boolean = true,              // add ,qAR,<IGATE_NAME> on radio->out
-    // ----- AIS (not implemented yet; stored for future use) -----
-    val aisEnabled: Boolean = false,           // AIS feature switch (UI only)
-    val aisPort: Int = 10110,                  // AIS UDP/TCP port (UI only)
+    // ----- AIS feed (read-only NMEA to AIS clients) -----
+    val aisEnabled: Boolean = false,           // AIS feature switch
+    val aisPort: Int = 10110,                  // AIS TCP listen port
+    val radioToAis: Boolean = true,            // radio -> AIS clients (live + cache)
+    val internetToAis: Boolean = false,        // internet -> AIS clients (live + cache) + keeps upstream
+    val radioToAisCache: Boolean = true,       // cache radio positions for AIS reconnect
+    val internetToAisCache: Boolean = false,   // cache internet positions for AIS reconnect
     // ----- timing -----
     val pingSeconds: Long = 90,                // upstream keepalive comment interval
     val cacheSeconds: Long = 90,               // buffer outbound-internet on disconnect
@@ -98,6 +102,7 @@ data class ProxyStats(
     val txInternet: Long = 0,     // packets to internet server
     val rxClients: Long = 0,      // packets from local clients
     val txClients: Long = 0,      // packets to local clients
+    val txAis: Long = 0,          // sensors/objects broadcast to AIS clients
     val clientList: List<String> = emptyList(),
     val packetsLog: List<String> = emptyList(),   // last N packets (reversed: newest first)
     val running: Boolean = false,
@@ -138,6 +143,15 @@ class AprsIsProxyClient(
         Thread(r).apply { isDaemon = true }
     }
 
+    // ---------------------------------------------------------------- AIS feed
+    // AIS is a read-only NMEA feed: connected clients only receive positions.
+    private data class AisCached(val pos: AisPosition, val expiry: Long)
+    private val aisClients = CopyOnWriteArrayList<Socket>()
+    private var aisServerSocket: ServerSocket? = null
+    private var aisAcceptThread: Thread? = null
+    // cached positions (callsign -> pos), TTL = cfg.cacheSeconds
+    private val aisCache = ConcurrentHashMap<String, AisCached>()
+
     // ------------------------------------------------------------------ stats
     // Russian: счётчики пакетов по направлениям и лог последних пакетов.
     @Volatile private var onStatsChanged: (() -> Unit)? = null
@@ -148,6 +162,7 @@ class AprsIsProxyClient(
     private var txInternet = 0L
     private var rxClients = 0L
     private var txClients = 0L
+    private var txAis = 0L
     private val packetsLog = java.util.ArrayDeque<String>()
 
     /** Install a callback fired whenever stats change (UI refresh). */
@@ -163,9 +178,18 @@ class AprsIsProxyClient(
         onStatsChanged?.invoke()
     }
 
-    /** Clear only the packet log (keep counters). */
-    fun clearPacketLog() {
+fun clearPacketLog() {
         synchronized(statsLock) { packetsLog.clear() }
+        onStatsChanged?.invoke()
+    }
+
+    /** Zero all counters and clear the packet log. */
+    fun resetStats() {
+        synchronized(statsLock) {
+            rxRadio = 0; txRadio = 0; rxInternet = 0
+            txInternet = 0; rxClients = 0; txClients = 0; txAis = 0
+            packetsLog.clear()
+        }
         onStatsChanged?.invoke()
     }
 
@@ -184,7 +208,7 @@ class AprsIsProxyClient(
             return ProxyStats(
                 rxRadio = rxRadio, txRadio = txRadio,
                 rxInternet = rxInternet, txInternet = txInternet,
-                rxClients = rxClients, txClients = txClients,
+                rxClients = rxClients, txClients = txClients, txAis = txAis,
                 clientList = clientList(),
                 packetsLog = packetsLog.toList(),
                 running = running,
@@ -211,6 +235,7 @@ class AprsIsProxyClient(
         if (running) return
         running = true
         startLocalServer()
+        if (cfg.aisEnabled) startAisServer()
         // upstream is (re)connected by the idle/requirement monitor + whenever
         // it is needed; kick the first connection right away.
         executor.execute { ensureUpstream() }
@@ -220,6 +245,7 @@ class AprsIsProxyClient(
 
     fun stop() {
         running = false
+        stopAisServer()
         synchronized(lock) {
             try { serverSocket?.close() } catch (_: Exception) { }
             serverSocket = null
@@ -256,9 +282,15 @@ class AprsIsProxyClient(
             }
             if (running) startLocalServer()
         }
+        if (prev.aisEnabled != cfg.aisEnabled || prev.aisPort != cfg.aisPort) {
+            // AIS server turned on/off or port changed -> rebuild
+            stopAisServer()
+            if (running && cfg.aisEnabled) startAisServer()
+        }
         if (running && (loginChanged ||
                 prev.radioToInternet != cfg.radioToInternet ||
-                prev.internetToRadio != cfg.internetToRadio)) {
+                prev.internetToRadio != cfg.internetToRadio ||
+                prev.internetToAis != cfg.internetToAis)) {
             executor.execute { ensureUpstream() }
             onLog.log("[Proxy] config updated, upstream re-evaluated")
         }
@@ -274,6 +306,10 @@ class AprsIsProxyClient(
         if (cfg.radioToClients) broadcastToClients(corrected)
         // radio -> internet (IGate-corrected); buffered on disconnect
         if (cfg.radioToInternet) sendToInternet(corrected)
+        // radio -> AIS (position objects feed for AIS clients)
+        if (cfg.radioToAis) {
+            feedAisSource(AisCodec.parseAprsPosition(corrected), allowLive = true, allowCache = cfg.radioToAisCache)
+        }
         bumpStats()
     }
 
@@ -311,6 +347,106 @@ class AprsIsProxyClient(
         onLog.log("[Proxy] client disconnected: ${c.address}")
         executor.execute { ensureUpstream() }
     }
+
+    // ---------------------------------------------------------------- AIS server
+    private fun startAisServer() {
+        if (!running || !cfg.aisEnabled) return
+        try {
+            val ss = ServerSocket(cfg.aisPort)
+            ss.reuseAddress = true
+            synchronized(lock) { aisServerSocket = ss }
+            aisAcceptThread = Thread(::aisAcceptLoop, "ais-accept").apply { isDaemon = true; start() }
+            onLog.log("[AIS] listening on :${cfg.aisPort}")
+        } catch (e: Exception) {
+            onLog.log("[AIS!] listen failed on :${cfg.aisPort}: ${e.message}")
+        }
+    }
+
+    private fun stopAisServer() {
+        synchronized(lock) {
+            try { aisServerSocket?.close() } catch (_: Exception) { }
+            aisServerSocket = null
+            for (s in aisClients) { try { s.close() } catch (_: Exception) { } }
+            aisClients.clear()
+        }
+        aisAcceptThread?.join(2000); aisAcceptThread = null
+        synchronized(aisCacheLock) { aisCache.clear() }
+    }
+
+    private fun aisAcceptLoop() {
+        val ss = aisServerSocket ?: return
+        while (running && cfg.aisEnabled) {
+            try {
+                val s = ss.accept()
+                aisClients.add(s)
+                onLog.log("[AIS] client connected: ${s.inetAddress?.hostAddress ?: "?"}")
+                // welcome + cached positions (so clients get an immediate picture)
+                sendAis(s, "#WELCOME TO TDH9 AIS BRIDGE\r\n")
+                synchronized(aisCacheLock) {
+                    for ((_, c) in aisCache) sendAis(s, AisCodec.frames(c.pos))
+                }
+                executor.execute { aisClientLoop(s) }
+            } catch (e: Exception) {
+                if (running) onLog.log("[AIS!] accept: ${e.message}")
+            }
+        }
+    }
+
+    /** AIS clients are read-only; just keep the socket alive and pings it. */
+    private fun aisClientLoop(s: Socket) {
+        try {
+            s.soTimeout = 30000
+            val `in` = s.getInputStream()
+            val buf = ByteArray(256)
+            while (running && cfg.aisEnabled && !s.isClosed) {
+                try {
+                    val n = `in`.read(buf)
+                    if (n < 0) break
+                    // ignore anything the client sends; read-only feed
+                } catch (_: java.net.SocketTimeoutException) {
+                    // keepalive ping so the client does not time us out
+                    sendAis(s, "# ping\r\n")
+                }
+            }
+        } catch (_: Exception) {
+        } finally {
+            aisClients.remove(s)
+            try { s.close() } catch (_: Exception) { }
+            onLog.log("[AIS] client disconnected: ${s.inetAddress?.hostAddress ?: "?"}")
+        }
+    }
+
+    private fun sendAis(s: Socket, text: String) {
+        try {
+            s.getOutputStream().write(text.toByteArray(Charsets.UTF_8))
+            s.getOutputStream().flush()
+        } catch (_: Exception) { }
+    }
+
+    /** Broadcast an AIS frame (already CRLF-terminated, one or many lines) to all clients. */
+    private fun broadcastAis(payload: String) {
+        if (aisClients.isEmpty()) return
+        for (s in aisClients) sendAis(s, payload)
+    }
+
+    /** Feed a position into the AIS cache (respecting per-source switch) and broadcast it. */
+    private fun feedAisSource(pos: AisPosition?, allowLive: Boolean, allowCache: Boolean) {
+        if (pos == null) return
+        if (allowCache) {
+            synchronized(aisCacheLock) {
+                aisCache[pos.callsign.uppercase()] = AisCached(pos, System.currentTimeMillis() + cfg.cacheSeconds * 1000)
+            }
+        }
+        if (allowLive) {
+            // type 1 + type 5, CRLF-terminated (this is what OruxMaps expects)
+            val frames = AisCodec.frames(pos)
+            synchronized(statsLock) { txAis++ }
+            broadcastAis(frames)
+            bumpStats()
+        }
+    }
+
+    private val aisCacheLock = Any()
 
     private fun clientLoop(cl: LocalClient) {
         try {
@@ -410,7 +546,7 @@ class AprsIsProxyClient(
 
     private fun requirementActive(): Boolean {
         return running && cfg.enabled &&
-            (clients.isNotEmpty() || cfg.radioToInternet || cfg.internetToRadio)
+            (clients.isNotEmpty() || cfg.radioToInternet || cfg.internetToRadio || cfg.internetToAis)
     }
 
     private fun ensureUpstream() {
@@ -507,6 +643,10 @@ class AprsIsProxyClient(
             try { onTxToRadio.onText(text) } catch (_: Exception) { }
             synchronized(statsLock) { txRadio++ }
         }
+        // internet -> AIS (position objects feed for AIS clients)
+        if (cfg.internetToAis) {
+            feedAisSource(AisCodec.parseAprsPosition(text), allowLive = true, allowCache = cfg.internetToAisCache)
+        }
         bumpStats()
     }
 
@@ -597,6 +737,11 @@ class AprsIsProxyClient(
                     onLog.log("[Proxy] upstream idle (no requirement) for ${cfg.idleTimeoutSeconds}s, closed")
                     noReqSince = now
                 }
+            }
+            // prune expired AIS position cache (TTL = cfg.cacheSeconds)
+            synchronized(aisCacheLock) {
+                val it = aisCache.entries.iterator()
+                while (it.hasNext()) if (it.next().value.expiry <= now) it.remove()
             }
         }
     }

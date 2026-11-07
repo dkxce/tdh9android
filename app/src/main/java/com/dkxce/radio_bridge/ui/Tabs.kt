@@ -305,6 +305,10 @@ fun ProxyTab(
     var idleTimeoutSeconds by remember(pcfg.idleTimeoutSeconds) { mutableStateOf(pcfg.idleTimeoutSeconds.toString()) }
     var aisEnabled by remember(pcfg.aisEnabled) { mutableStateOf(pcfg.aisEnabled) }
     var aisPort by remember(pcfg.aisPort) { mutableStateOf(pcfg.aisPort.toString()) }
+    var radioToAis by remember(pcfg.radioToAis) { mutableStateOf(pcfg.radioToAis) }
+    var internetToAis by remember(pcfg.internetToAis) { mutableStateOf(pcfg.internetToAis) }
+    var radioToAisCache by remember(pcfg.radioToAisCache) { mutableStateOf(pcfg.radioToAisCache) }
+    var internetToAisCache by remember(pcfg.internetToAisCache) { mutableStateOf(pcfg.internetToAisCache) }
 
     val collectCfg = {
         ProxyConfig(
@@ -326,6 +330,10 @@ fun ProxyTab(
             idleTimeoutSeconds = idleTimeoutSeconds.toLongOrNull() ?: 300,
             aisEnabled = aisEnabled,
             aisPort = aisPort.toIntOrNull() ?: 10110,
+            radioToAis = radioToAis,
+            internetToAis = internetToAis,
+            radioToAisCache = radioToAisCache,
+            internetToAisCache = internetToAisCache,
             enabled = true,
         )
     }
@@ -336,6 +344,7 @@ fun ProxyTab(
         callsign, pass, server, serverPort, listenPort, filter, igateName, source,
         radioToClients, radioToInternet, internetToRadio, clientsToRadio, applyQar,
         pingSeconds, cacheSeconds, idleTimeoutSeconds, aisEnabled, aisPort,
+        radioToAis, internetToAis, radioToAisCache, internetToAisCache,
     ) {
         onSaveProxyConfig(collectCfg())
     }
@@ -409,14 +418,22 @@ fun ProxyTab(
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                 keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
 
-        // AIS (not implemented yet)
-        Text("AIS (not active yet):", style = MaterialTheme.typography.labelLarge)
+        // AIS feed (read-only NMEA to AIS clients)
+        Text("AIS feed:", style = MaterialTheme.typography.labelLarge)
         Row { Checkbox(checked = aisEnabled, onCheckedChange = { aisEnabled = it })
             Text("Enable AIS", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
         OutlinedTextField(value = aisPort, onValueChange = { aisPort = it },
             label = { Text("AIS port") }, singleLine = true,
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                 keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
+        Row { Checkbox(checked = radioToAis, onCheckedChange = { radioToAis = it })
+            Text("radio -> AIS", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
+        Row { Checkbox(checked = radioToAisCache, onCheckedChange = { radioToAisCache = it })
+            Text("radio -> AIS cache", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
+        Row { Checkbox(checked = internetToAis, onCheckedChange = { internetToAis = it })
+            Text("internet -> AIS", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
+        Row { Checkbox(checked = internetToAisCache, onCheckedChange = { internetToAisCache = it })
+            Text("internet -> AIS cache", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
 
         if (state.proxyRunning) {
             Button(onClick = onStopProxy,
@@ -434,6 +451,7 @@ fun ProxyTab(
             Text("RX radio: ${s.rxRadio}   TX radio: ${s.txRadio}")
             Text("RX internet: ${s.rxInternet}   TX internet: ${s.txInternet}")
             Text("RX clients: ${s.rxClients}   TX clients: ${s.txClients}")
+            Text("TX AIS: ${s.txAis}")
             TextButton(onClick = onResetProxyStats) { Text("Reset stats") }
 
             // active clients
