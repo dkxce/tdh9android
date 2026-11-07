@@ -32,6 +32,7 @@ import com.dkxce.radio_bridge.ble.BleEvents
 import com.dkxce.radio_bridge.core.Kiss
 import com.dkxce.radio_bridge.core.Ax25
 import com.dkxce.radio_bridge.net.AgwTcpServer
+import com.dkxce.radio_bridge.net.AprsIsProxyClient
 import com.dkxce.radio_bridge.net.AprsIsTcpServer
 import com.dkxce.radio_bridge.net.KissTcpServer
 import com.dkxce.radio_bridge.igate.IGateClient
@@ -50,6 +51,7 @@ class BridgeService : Service() {
     private var agwServer: AgwTcpServer? = null
     private var aprsServer: AprsIsTcpServer? = null
     private var igate: IGateClient? = null
+    private var proxy: AprsIsProxyClient? = null
     private val running = AtomicBoolean(false)
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -67,6 +69,7 @@ class BridgeService : Service() {
         running.set(false)
         stopServers()
         stopIGate()
+        stopProxy()
         ble?.disconnect()
         ble = null
         super.onDestroy()
@@ -105,6 +108,9 @@ class BridgeService : Service() {
             ACTION_STOP_SERVER -> stopServers()
             ACTION_START_IGATE -> startIGate()
             ACTION_STOP_IGATE -> stopIGate()
+            ACTION_START_PROXY -> startProxy()
+            ACTION_STOP_PROXY -> stopProxy()
+            ACTION_RESET_PROXY_STATS -> { proxy?.resetStats() }
             ACTION_SEND_RADIO -> {
                 val data = intent.getByteArrayExtra(EXTRA_KISS)
                 if (data != null) sendToRadio(data)
@@ -236,6 +242,8 @@ class BridgeService : Service() {
                 // Rule (b): send the received radio frame into the IGate
                 // (radio -> net) on a background thread, like Python.
                 try { igate?.radioRx(text) } catch (e: Exception) { model.appendLog("[IGate!] radioRx: $e") }
+                // Proxy: radio -> clients + internet (IGate qAR correction inside).
+                try { proxy?.radioRx(text) } catch (e: Exception) { model.appendLog("[Proxy!] radioRx: $e") }
                 val n = currentClientCount()
                 if (n == 0) {
                     model.appendLog("[RX] no TCP clients connected, skip broadcast")
@@ -292,6 +300,49 @@ class BridgeService : Service() {
         model.appendLog("[IGate] stopped")
     }
 
+    // ------------------------------------------------------------------ proxy
+    private fun startProxy() {
+        val cfg = model.loadProxyConfig().copy(enabled = true)
+        model.saveProxyConfig(cfg)
+        if (proxy == null) {
+            proxy = AprsIsProxyClient(
+                cfg = cfg,
+                onTxToRadio = { text ->
+                    // internet / clients -> radio. Log and transmit as-is.
+                    try {
+                        val ax25 = com.dkxce.radio_bridge.core.Ax25.encodeText(text)
+                        model.appendLog("[Proxy -> radio] $text")
+                        sendToRadio(ax25)
+                    } catch (e: Exception) {
+                        model.appendLog("[Proxy!] tx to radio failed: $e")
+                    }
+                },
+                onLog = { msg -> model.appendLog(msg) },
+            ).also { p ->
+                // Push live proxy stats to the UI model periodically.
+                p.setOnStatsChanged { pushProxyStats() }
+            }
+        } else {
+            proxy?.updateConfig(cfg)
+        }
+        proxy?.start()
+        model.setProxyRunning(true)
+        model.appendLog("[Proxy] started")
+    }
+
+    private fun stopProxy() {
+        proxy?.stop()
+        proxy = null
+        model.setProxyRunning(false)
+        model.setProxyStats(com.dkxce.radio_bridge.net.ProxyStats())
+        model.appendLog("[Proxy] stopped")
+    }
+
+    private fun pushProxyStats() {
+        val p = proxy ?: return
+        model.setProxyStats(p.stats())
+    }
+
     // ------------------------------------------------------------------ notification
     private fun createChannel() {
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
@@ -324,6 +375,9 @@ class BridgeService : Service() {
         const val ACTION_STOP_SERVER = "com.dkxce.radio_bridge.ACTION_STOP_SERVER"
         const val ACTION_START_IGATE = "com.dkxce.radio_bridge.ACTION_START_IGATE"
         const val ACTION_STOP_IGATE = "com.dkxce.radio_bridge.ACTION_STOP_IGATE"
+        const val ACTION_START_PROXY = "com.dkxce.radio_bridge.ACTION_START_PROXY"
+        const val ACTION_STOP_PROXY = "com.dkxce.radio_bridge.ACTION_STOP_PROXY"
+        const val ACTION_RESET_PROXY_STATS = "com.dkxce.radio_bridge.ACTION_RESET_PROXY_STATS"
         const val ACTION_SEND_RADIO = "com.dkxce.radio_bridge.ACTION_SEND_RADIO"
         const val EXTRA_ADDR = "addr"
         const val EXTRA_KISS = "kiss"

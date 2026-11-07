@@ -33,6 +33,8 @@ import com.dkxce.radio_bridge.app.BridgeConfig
 import com.dkxce.radio_bridge.app.ServerMode
 import com.dkxce.radio_bridge.app.UiState
 import com.dkxce.radio_bridge.igate.IGateConfig
+import com.dkxce.radio_bridge.net.ProxyConfig
+import com.dkxce.radio_bridge.net.ProxySource
 
 @Composable
 fun DeviceTab(
@@ -262,6 +264,183 @@ fun AboutTab() {
         Text("Bridge between the TIDRadio TD-H9 radio (BLE APRS service 0000af00) and external "
             + "APRS applications via local TCP servers.",
             style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+/** Proxy tab: APRS-IS proxy settings, stats, clients and packet log. */
+@Composable
+fun ProxyTab(
+    state: UiState,
+    onStartProxy: () -> Unit,
+    onStopProxy: () -> Unit,
+    onSaveProxyConfig: (ProxyConfig) -> Unit,
+    onResetProxyStats: () -> Unit,
+) {
+    val pcfg = state.proxyConfig
+    var callsign by remember(pcfg.callsign) { mutableStateOf(pcfg.callsign) }
+    var pass by remember(pcfg.passcode) { mutableStateOf(pcfg.passcode.toString()) }
+    var server by remember(pcfg.server) { mutableStateOf(pcfg.server) }
+    var port by remember(pcfg.port) { mutableStateOf(pcfg.port.toString()) }
+    var filter by remember(pcfg.filter) { mutableStateOf(pcfg.filter) }
+    var igateName by remember(pcfg.igateName) { mutableStateOf(pcfg.igateName) }
+    var source by remember(pcfg.source) { mutableStateOf(pcfg.source) }
+    var radioToClients by remember(pcfg.radioToClients) { mutableStateOf(pcfg.radioToClients) }
+    var radioToInternet by remember(pcfg.radioToInternet) { mutableStateOf(pcfg.radioToInternet) }
+    var internetToRadio by remember(pcfg.internetToRadio) { mutableStateOf(pcfg.internetToRadio) }
+    var clientsToRadio by remember(pcfg.clientsToRadio) { mutableStateOf(pcfg.clientsToRadio) }
+    var applyQar by remember(pcfg.applyQar) { mutableStateOf(pcfg.applyQar) }
+    var pingSeconds by remember(pcfg.pingSeconds) { mutableStateOf(pcfg.pingSeconds.toString()) }
+    var cacheSeconds by remember(pcfg.cacheSeconds) { mutableStateOf(pcfg.cacheSeconds.toString()) }
+    var idleTimeoutSeconds by remember(pcfg.idleTimeoutSeconds) { mutableStateOf(pcfg.idleTimeoutSeconds.toString()) }
+    var aisEnabled by remember(pcfg.aisEnabled) { mutableStateOf(pcfg.aisEnabled) }
+    var aisPort by remember(pcfg.aisPort) { mutableStateOf(pcfg.aisPort.toString()) }
+
+    val collectCfg = {
+        ProxyConfig(
+            callsign = callsign.trim(),
+            passcode = pass.toIntOrNull() ?: 0,
+            server = server.trim(),
+            port = port.toIntOrNull() ?: 14580,
+            filter = filter.trim(),
+            igateName = igateName.trim(),
+            source = source,
+            radioToClients = radioToClients,
+            radioToInternet = radioToInternet,
+            internetToRadio = internetToRadio,
+            clientsToRadio = clientsToRadio,
+            applyQar = applyQar,
+            pingSeconds = pingSeconds.toLongOrNull() ?: 90,
+            cacheSeconds = cacheSeconds.toLongOrNull() ?: 90,
+            idleTimeoutSeconds = idleTimeoutSeconds.toLongOrNull() ?: 300,
+            aisEnabled = aisEnabled,
+            aisPort = aisPort.toIntOrNull() ?: 0,
+            enabled = true,
+        )
+    }
+
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text("APRS-IS Proxy (Bridge)", style = MaterialTheme.typography.titleMedium)
+
+        OutlinedTextField(value = callsign, onValueChange = { callsign = it },
+            label = { Text("Callsign (upstream)") }, singleLine = true)
+        OutlinedTextField(value = pass, onValueChange = { pass = it },
+            label = { Text("Passcode (0 = auto)") }, singleLine = true,
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
+        OutlinedTextField(value = server, onValueChange = { server = it },
+            label = { Text("Server") }, singleLine = true)
+        OutlinedTextField(value = port, onValueChange = { port = it },
+            label = { Text("Port") }, singleLine = true,
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
+        OutlinedTextField(value = filter, onValueChange = { filter = it },
+            label = { Text("Filter (default d/<IGATE_NAME>*)") }, singleLine = true)
+        OutlinedTextField(value = igateName, onValueChange = { igateName = it },
+            label = { Text("IGATE_NAME") }, singleLine = true)
+
+        // upstream credentials source
+        var srcExpanded by remember { mutableStateOf(false) }
+        Box {
+            OutlinedButton(onClick = { srcExpanded = true }) {
+                Text("Credentials: ${source.name}")
+            }
+            DropdownMenu(expanded = srcExpanded, onDismissRequest = { srcExpanded = false }) {
+                ProxySource.entries.forEach { s ->
+                    DropdownMenuItem(text = { Text(s.name) },
+                        onClick = { source = s; srcExpanded = false })
+                }
+            }
+        }
+
+        // forwarding switches
+        Text("Forwarding:", style = MaterialTheme.typography.labelLarge)
+        Row { Checkbox(checked = radioToClients, onCheckedChange = { radioToClients = it })
+            Text("radio -> clients", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
+        Row { Checkbox(checked = radioToInternet, onCheckedChange = { radioToInternet = it })
+            Text("radio -> internet", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
+        Row { Checkbox(checked = internetToRadio, onCheckedChange = { internetToRadio = it })
+            Text("internet -> radio", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
+        Row { Checkbox(checked = clientsToRadio, onCheckedChange = { clientsToRadio = it })
+            Text("clients -> radio", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
+        Row { Checkbox(checked = applyQar, onCheckedChange = { applyQar = it })
+            Text("apply ,qAR,<IGATE_NAME> on radio out", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
+
+        // timing
+        Text("Timing:", style = MaterialTheme.typography.labelLarge)
+        OutlinedTextField(value = pingSeconds, onValueChange = { pingSeconds = it },
+            label = { Text("Ping (s)") }, singleLine = true,
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
+        OutlinedTextField(value = cacheSeconds, onValueChange = { cacheSeconds = it },
+            label = { Text("Cache (s)") }, singleLine = true,
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
+        OutlinedTextField(value = idleTimeoutSeconds, onValueChange = { idleTimeoutSeconds = it },
+            label = { Text("Idle timeout (s)") }, singleLine = true,
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
+
+        // AIS (not implemented yet)
+        Text("AIS (not active yet):", style = MaterialTheme.typography.labelLarge)
+        Row { Checkbox(checked = aisEnabled, onCheckedChange = { aisEnabled = it })
+            Text("Enable AIS", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
+        OutlinedTextField(value = aisPort, onValueChange = { aisPort = it },
+            label = { Text("AIS port") }, singleLine = true,
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
+
+        if (state.proxyRunning) {
+            Button(onClick = onStopProxy,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Filled.Stop, null); Spacer(Modifier.width(6.dp)); Text("Stop Proxy")
+            }
+            Text("Proxy running${if (state.proxyStats.upstreamConnected) " · upstream connected" else ""}" +
+                (if (state.proxyStats.effectiveCallsign.isNotEmpty()) " · ${state.proxyStats.effectiveCallsign}" else ""),
+                color = MaterialTheme.colorScheme.primary)
+
+            // counters
+            Text("Packets:", style = MaterialTheme.typography.labelLarge)
+            val s = state.proxyStats
+            Text("RX radio: ${s.rxRadio}   TX radio: ${s.txRadio}")
+            Text("RX internet: ${s.rxInternet}   TX internet: ${s.txInternet}")
+            Text("RX clients: ${s.rxClients}   TX clients: ${s.txClients}")
+            TextButton(onClick = onResetProxyStats) { Text("Reset stats") }
+
+            // active clients
+            if (s.clientList.isNotEmpty()) {
+                Text("Active clients:", style = MaterialTheme.typography.labelLarge)
+                s.clientList.forEach { c ->
+                    Text(c, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        style = MaterialTheme.typography.bodySmall)
+                }
+            } else {
+                Text("No clients", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+
+            // packet log (last 20)
+            if (s.packetsLog.isNotEmpty()) {
+                Text("Last packets:", style = MaterialTheme.typography.labelLarge)
+                s.packetsLog.take(20).forEach { p ->
+                    Text(p, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(vertical = 1.dp))
+                }
+            }
+        } else {
+            Button(onClick = {
+                onSaveProxyConfig(collectCfg())
+                onStartProxy()
+            }, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Filled.PlayArrow, null); Spacer(Modifier.width(6.dp)); Text("Start Proxy")
+            }
+            Text("Proxy stopped", color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium)
+        }
     }
 }
 

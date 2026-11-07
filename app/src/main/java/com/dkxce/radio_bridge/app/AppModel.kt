@@ -17,6 +17,9 @@ package com.dkxce.radio_bridge.app
 import android.content.Context
 import android.content.SharedPreferences
 import com.dkxce.radio_bridge.igate.IGateConfig
+import com.dkxce.radio_bridge.net.ProxyConfig
+import com.dkxce.radio_bridge.net.ProxySource
+import com.dkxce.radio_bridge.net.ProxyStats
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -50,6 +53,9 @@ data class UiState(
     val clientsList: List<String> = emptyList(),
     val igateConfig: IGateConfig = IGateConfig(),
     val igateRunning: Boolean = false,
+    val proxyConfig: ProxyConfig = ProxyConfig(),
+    val proxyRunning: Boolean = false,
+    val proxyStats: ProxyStats = ProxyStats(),
     val log: List<String> = emptyList(),
 )
 
@@ -139,6 +145,63 @@ class AppModel private constructor(context: Context) {
     }
 
     fun setIGateRunning(running: Boolean) { _ui.value = _ui.value.copy(igateRunning = running) }
+
+    // --- Proxy (APRS-IS bridge) settings + state ---
+
+    fun saveProxyConfig(cfg: ProxyConfig) {
+        prefs.edit()
+            .putString("proxy_callsign", cfg.callsign)
+            .putInt("proxy_passcode", cfg.passcode)
+            .putString("proxy_server", cfg.server)
+            .putInt("proxy_port", cfg.port)
+            .putString("proxy_filter", cfg.filter)
+            .putString("proxy_igate_name", cfg.igateName)
+            .putString("proxy_source", cfg.source.name)
+            .putBoolean("proxy_radio_to_clients", cfg.radioToClients)
+            .putBoolean("proxy_radio_to_internet", cfg.radioToInternet)
+            .putBoolean("proxy_internet_to_radio", cfg.internetToRadio)
+            .putBoolean("proxy_clients_to_radio", cfg.clientsToRadio)
+            .putBoolean("proxy_apply_qar", cfg.applyQar)
+            .putLong("proxy_ping_seconds", cfg.pingSeconds)
+            .putLong("proxy_cache_seconds", cfg.cacheSeconds)
+            .putLong("proxy_idle_timeout_seconds", cfg.idleTimeoutSeconds)
+            .putBoolean("proxy_ais_enabled", cfg.aisEnabled)
+            .putInt("proxy_ais_port", cfg.aisPort)
+            .putBoolean("proxy_enabled", cfg.enabled)
+            .apply()
+        _ui.value = _ui.value.copy(proxyConfig = cfg)
+    }
+
+    fun loadProxyConfig(): ProxyConfig {
+        val cfg = ProxyConfig(
+            callsign = prefs.getString("proxy_callsign", "NOCALL-10")!!,
+            passcode = prefs.getInt("proxy_passcode", 0),
+            server = prefs.getString("proxy_server", "rotate.aprs2.net")!!,
+            port = prefs.getInt("proxy_port", 14580),
+            filter = prefs.getString("proxy_filter", "")!!,
+            igateName = prefs.getString("proxy_igate_name", "NOCALL-1")!!,
+            source = runCatching {
+                ProxySource.valueOf(prefs.getString("proxy_source", ProxySource.LAST_CLIENT.name)!!)
+            }.getOrDefault(ProxySource.LAST_CLIENT),
+            radioToClients = prefs.getBoolean("proxy_radio_to_clients", true),
+            radioToInternet = prefs.getBoolean("proxy_radio_to_internet", true),
+            internetToRadio = prefs.getBoolean("proxy_internet_to_radio", true),
+            clientsToRadio = prefs.getBoolean("proxy_clients_to_radio", true),
+            applyQar = prefs.getBoolean("proxy_apply_qar", true),
+            pingSeconds = prefs.getLong("proxy_ping_seconds", 90),
+            cacheSeconds = prefs.getLong("proxy_cache_seconds", 90),
+            idleTimeoutSeconds = prefs.getLong("proxy_idle_timeout_seconds", 300),
+            aisEnabled = prefs.getBoolean("proxy_ais_enabled", false),
+            aisPort = prefs.getInt("proxy_ais_port", 0),
+            enabled = prefs.getBoolean("proxy_enabled", false),
+        )
+        _ui.value = _ui.value.copy(proxyConfig = cfg)
+        return cfg
+    }
+
+    fun setProxyRunning(running: Boolean) { _ui.value = _ui.value.copy(proxyRunning = running) }
+    fun setProxyStats(stats: ProxyStats) { _ui.value = _ui.value.copy(proxyStats = stats) }
+    fun resetProxyStats() { _ui.value = _ui.value.copy(proxyStats = ProxyStats()) }
 
     // --- UI state mutators (called from ViewModel/service) ---
 

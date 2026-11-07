@@ -78,6 +78,16 @@ class MainActivity : ComponentActivity() {
                         startService(BridgeService.ACTION_STOP_IGATE)
                     },
                     onSaveIGateConfig = viewModel::saveIGateConfig,
+                    onStartProxy = {
+                        startService(BridgeService.ACTION_START_PROXY)
+                    },
+                    onStopProxy = {
+                        startService(BridgeService.ACTION_STOP_PROXY)
+                    },
+                    onSaveProxyConfig = viewModel::saveProxyConfig,
+                    onResetProxyStats = {
+                        startService(BridgeService.ACTION_RESET_PROXY_STATS)
+                    },
                     onSaveConfig = viewModel::saveConfig,
                     onClearLog = viewModel::clearLog,
                 )

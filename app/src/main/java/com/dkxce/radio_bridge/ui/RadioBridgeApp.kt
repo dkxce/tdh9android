@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import com.dkxce.radio_bridge.app.BridgeConfig
 import com.dkxce.radio_bridge.app.UiState
 import com.dkxce.radio_bridge.igate.IGateConfig
+import com.dkxce.radio_bridge.net.ProxyConfig
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,6 +38,10 @@ fun RadioBridgeApp(
     onStartIGate: () -> Unit,
     onStopIGate: () -> Unit,
     onSaveIGateConfig: (IGateConfig) -> Unit,
+    onStartProxy: () -> Unit,
+    onStopProxy: () -> Unit,
+    onSaveProxyConfig: (ProxyConfig) -> Unit,
+    onResetProxyStats: () -> Unit,
     onClearLog: () -> Unit,
 ) {
     var tab by remember { mutableStateOf(0) }
@@ -55,8 +60,10 @@ fun RadioBridgeApp(
                 NavigationBarItem(selected = tab == 2, onClick = { tab = 2 },
                     icon = { Icon(Icons.Filled.Cloud, null) }, label = { Text("IGate") })
                 NavigationBarItem(selected = tab == 3, onClick = { tab = 3 },
-                    icon = { Icon(Icons.Filled.Description, null) }, label = { Text("Log") })
+                    icon = { Icon(Icons.Filled.Link, null) }, label = { Text("Proxy") })
                 NavigationBarItem(selected = tab == 4, onClick = { tab = 4 },
+                    icon = { Icon(Icons.Filled.Description, null) }, label = { Text("Log") })
+                NavigationBarItem(selected = tab == 5, onClick = { tab = 5 },
                     icon = { Icon(Icons.Filled.Info, null) }, label = { Text("About") })
             }
         }
@@ -66,8 +73,9 @@ fun RadioBridgeApp(
                 0 -> DeviceTab(state, isConnected, onScan, onConnect, onDisconnect)
                 1 -> ServerTab(state, onStartServer, onStopServer, onSaveConfig)
                 2 -> IGateTab(state, onStartIGate, onStopIGate, onSaveIGateConfig)
-                3 -> LogTab(state, onClearLog)
-                4 -> AboutTab()
+                3 -> ProxyTab(state, onStartProxy, onStopProxy, onSaveProxyConfig, onResetProxyStats)
+                4 -> LogTab(state, onClearLog)
+                5 -> AboutTab()
             }
         }
     }
