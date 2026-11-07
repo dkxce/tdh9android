@@ -16,6 +16,7 @@ package com.dkxce.radio_bridge.app
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.documentfile.provider.DocumentFile
 import com.dkxce.radio_bridge.igate.IGateConfig
 import com.dkxce.radio_bridge.net.ProxyConfig
 import com.dkxce.radio_bridge.net.ProxySource
@@ -336,11 +337,14 @@ class AppModel private constructor(context: Context) {
     @Throws(java.io.IOException::class)
     fun exportSettingsToFolder(folderUriString: String) {
         val resolver = ctx.contentResolver
-        val folderUri = android.net.Uri.parse(folderUriString)
+        val folder = DocumentFile.fromTreeUri(ctx, android.net.Uri.parse(folderUriString))
+            ?: throw java.io.IOException("fromTreeUri failed")
         val name = "settings.json"
-        val newUri = android.provider.DocumentsContract.createDocument(resolver, folderUri, "application/json", name)
-            ?: throw java.io.IOException("createDocument failed")
-        resolver.openOutputStream(newUri)?.use { it.write(settingsJson().toByteArray(Charsets.UTF_8)) }
+        // reuse existing file if any, otherwise create a new one
+        val file = folder.findFile(name)
+            ?: folder.createFile("application/json", name)
+            ?: throw java.io.IOException("createFile failed")
+        resolver.openOutputStream(file.uri)?.use { it.write(settingsJson().toByteArray(Charsets.UTF_8)) }
             ?: throw java.io.IOException("openOutputStream failed")
     }
 
@@ -348,10 +352,11 @@ class AppModel private constructor(context: Context) {
     @Throws(java.io.IOException::class)
     fun importSettingsFromFolder(folderUriString: String) {
         val resolver = ctx.contentResolver
-        val folderUri = android.net.Uri.parse(folderUriString)
-        val name = "settings.json"
-        val docUri = android.provider.DocumentsContract.buildDocumentUriUsingTree(folderUri, name)
-        val text = resolver.openInputStream(docUri)?.bufferedReader()?.readText()
+        val folder = DocumentFile.fromTreeUri(ctx, android.net.Uri.parse(folderUriString))
+            ?: throw java.io.IOException("fromTreeUri failed")
+        val file = folder.findFile("settings.json")
+            ?: throw java.io.IOException("settings.json not found in folder")
+        val text = resolver.openInputStream(file.uri)?.bufferedReader()?.readText()
             ?: throw java.io.IOException("openInputStream failed")
         parseSettingsJson(text)
     }
