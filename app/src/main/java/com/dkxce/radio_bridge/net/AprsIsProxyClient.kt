@@ -310,9 +310,9 @@ class AprsIsProxyClient(
             val reader = BufferedReader(InputStreamReader(cl.socket.getInputStream(), Charsets.UTF_8))
             val out = cl.socket.getOutputStream()
             sendLine(out, "# ${cfg.igateName} APRS bridge: connection accepted")
-            var line: String?
-            while (running && reader.readLine().also { line = it } != null) {
-                val text = line!!.trim()
+            while (running) {
+                val line = reader.readLine() ?: break
+                val text = line.trim()
                 if (text.isEmpty()) continue
                 handleClientLine(cl, out, text)
             }
@@ -375,7 +375,7 @@ class AprsIsProxyClient(
                 }
             }
         }
-        return (call.trim() to pass.trim() to filter.trim())
+        return Triple(call.trim(), pass.trim(), filter.trim())
     }
 
     /** Compute the login line the proxy should currently present to upstream. */
