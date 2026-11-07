@@ -47,4 +47,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun clearLog() = model.clearLog()
     fun loadConfig() = model.loadConfig()
     fun resetProxyStats() = model.resetProxyStats()
+
+    fun exportSettings(path: String) = model.exportSettings(java.io.File(path))
+    fun importSettings(path: String) = model.importSettings(java.io.File(path))
 }

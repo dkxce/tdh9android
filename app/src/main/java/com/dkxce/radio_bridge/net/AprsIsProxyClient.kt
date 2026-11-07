@@ -66,7 +66,7 @@ data class ProxyConfig(
     val listenPort: Int = 14580,             // local listener port for clients
     val filter: String = "",
     val igateName: String = "NOCALL-1",        // used for ,qAR,<IGATE_NAME> correction
-    val source: ProxySource = ProxySource.LAST_CLIENT,
+    val source: ProxySource = ProxySource.FIRST_CLIENT,
     // ----- forwarding switches -----
     val radioToClients: Boolean = true,        // radio -> local clients   (IGate qAR)
     val radioToInternet: Boolean = false,      // radio -> internet        (IGate qAR)
@@ -179,6 +179,14 @@ class AprsIsProxyClient(
 
 fun clearPacketLog() {
         synchronized(statsLock) { packetsLog.clear() }
+        onStatsChanged?.invoke()
+    }
+
+    /** Clear all caches: client packet cache and AIS position cache (keep counters). */
+    fun clearCaches() {
+        synchronized(clientCacheLock) { clientCache.clear() }
+        synchronized(aisCacheLock) { aisCache.clear() }
+        onLog.log("[Proxy] caches cleared")
         onStatsChanged?.invoke()
     }
 
@@ -695,8 +703,8 @@ fun clearPacketLog() {
             val it = clientCache.iterator()
             while (it.hasNext()) {
                 val c = it.next()
-                if (c.expiry <= now) { it.remove(); continue }
-                toSend.add(c.payload); it.remove()
+                if (c.expiry <= now) { it.remove(); continue }   // drop stale
+                toSend.add(c.payload)                            // keep for other clients
             }
         }
         for (p in toSend) sendLine(out, p)
@@ -775,6 +783,11 @@ fun clearPacketLog() {
             synchronized(aisCacheLock) {
                 val it = aisCache.entries.iterator()
                 while (it.hasNext()) if (it.next().value.expiry <= now) it.remove()
+            }
+            // prune expired client packet cache (TTL = cfg.cacheSeconds)
+            synchronized(clientCacheLock) {
+                val it = clientCache.iterator()
+                while (it.hasNext()) if (it.next().expiry <= now) it.remove()
             }
         }
     }

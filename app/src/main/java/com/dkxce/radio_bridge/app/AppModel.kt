@@ -192,8 +192,8 @@ class AppModel private constructor(context: Context) {
             filter = prefs.getString("proxy_filter", "")!!,
             igateName = prefs.getString("proxy_igate_name", "NOCALL-1")!!,
             source = runCatching {
-                ProxySource.valueOf(prefs.getString("proxy_source", ProxySource.LAST_CLIENT.name)!!)
-            }.getOrDefault(ProxySource.LAST_CLIENT),
+                ProxySource.valueOf(prefs.getString("proxy_source", ProxySource.FIRST_CLIENT.name)!!)
+            }.getOrDefault(ProxySource.FIRST_CLIENT),
             radioToClients = prefs.getBoolean("proxy_radio_to_clients", true),
             radioToInternet = prefs.getBoolean("proxy_radio_to_internet", false),
             internetToRadio = prefs.getBoolean("proxy_internet_to_radio", false),
@@ -265,4 +265,125 @@ class AppModel private constructor(context: Context) {
     }
 
     fun clearLog() { _ui.value = _ui.value.copy(log = emptyList()) }
+
+    // ---------------------------------------------------------------- export/import
+    // Export all app settings (Server / IGate / Proxy) to a JSON file in filesDir.
+    // Import reads that file back and rewrites SharedPreferences + UI state.
+
+    @Throws(java.io.IOException::class)
+    fun exportSettings(file: java.io.File) {
+        val o = org.json.JSONObject()
+        val bridge = _ui.value.let { u ->
+            org.json.JSONObject()
+                .put("serverMode", u.serverMode.name)
+                .put("port", u.port)
+        }
+        o.put("bridge", bridge)
+        o.put("igate", igateToJson(_ui.value.igateConfig))
+        o.put("proxy", proxyToJson(_ui.value.proxyConfig))
+        file.writeText(o.toString(2))
+    }
+
+    @Throws(java.io.IOException::class)
+    fun importSettings(file: java.io.File) {
+        val o = org.json.JSONObject(file.readText())
+        // bridge (server)
+        val b = o.optJSONObject("bridge")
+        if (b != null) {
+            val mode = runCatching { ServerMode.valueOf(b.optString("serverMode", ServerMode.KISS.name)) }
+                .getOrDefault(ServerMode.KISS)
+            saveConfig(BridgeConfig(serverMode = mode, port = b.optInt("port", 8023)))
+        }
+        // igate
+        val i = o.optJSONObject("igate")
+        if (i != null) saveIGateConfig(igateFromJson(i, _ui.value.igateConfig))
+        // proxy
+        val p = o.optJSONObject("proxy")
+        if (p != null) saveProxyConfig(proxyFromJson(p, _ui.value.proxyConfig))
+    }
+
+    private fun igateToJson(c: IGateConfig): org.json.JSONObject = org.json.JSONObject()
+        .put("igateClient", c.igateClient)
+        .put("igateName", c.igateName)
+        .put("passcode", c.passcode)
+        .put("server", c.server)
+        .put("port", c.port)
+        .put("filter", c.filter)
+        .put("checkTcpip", c.checkTcpip)
+        .put("checkNoQar", c.checkNoQar)
+        .put("checkNoQao", c.checkNoQao)
+        .put("enabled", c.enabled)
+
+    private fun igateFromJson(j: org.json.JSONObject, d: IGateConfig): IGateConfig = IGateConfig(
+        igateClient = j.optString("igateClient", d.igateClient),
+        igateName = j.optString("igateName", d.igateName),
+        passcode = j.optInt("passcode", d.passcode),
+        server = j.optString("server", d.server),
+        port = j.optInt("port", d.port),
+        filter = j.optString("filter", d.filter),
+        checkTcpip = j.optBoolean("checkTcpip", d.checkTcpip),
+        checkNoQar = j.optBoolean("checkNoQar", d.checkNoQar),
+        checkNoQao = j.optBoolean("checkNoQao", d.checkNoQao),
+        enabled = j.optBoolean("enabled", d.enabled),
+    )
+
+    private fun proxyToJson(c: ProxyConfig): org.json.JSONObject = org.json.JSONObject()
+        .put("enabled", c.enabled)
+        .put("callsign", c.callsign)
+        .put("passcode", c.passcode)
+        .put("server", c.server)
+        .put("serverPort", c.serverPort)
+        .put("listenPort", c.listenPort)
+        .put("filter", c.filter)
+        .put("igateName", c.igateName)
+        .put("source", c.source.name)
+        .put("radioToClients", c.radioToClients)
+        .put("radioToInternet", c.radioToInternet)
+        .put("internetToRadio", c.internetToRadio)
+        .put("clientsToRadio", c.clientsToRadio)
+        .put("clientsToInternet", c.clientsToInternet)
+        .put("internetToClients", c.internetToClients)
+        .put("radioToClientsCache", c.radioToClientsCache)
+        .put("internetToClientsCache", c.internetToClientsCache)
+        .put("applyQar", c.applyQar)
+        .put("pingSeconds", c.pingSeconds)
+        .put("cacheSeconds", c.cacheSeconds)
+        .put("idleTimeoutSeconds", c.idleTimeoutSeconds)
+        .put("aisEnabled", c.aisEnabled)
+        .put("aisPort", c.aisPort)
+        .put("radioToAis", c.radioToAis)
+        .put("internetToAis", c.internetToAis)
+        .put("radioToAisCache", c.radioToAisCache)
+        .put("internetToAisCache", c.internetToAisCache)
+
+    private fun proxyFromJson(j: org.json.JSONObject, d: ProxyConfig): ProxyConfig = ProxyConfig(
+        enabled = j.optBoolean("enabled", d.enabled),
+        callsign = j.optString("callsign", d.callsign),
+        passcode = j.optInt("passcode", d.passcode),
+        server = j.optString("server", d.server),
+        serverPort = j.optInt("serverPort", d.serverPort),
+        listenPort = j.optInt("listenPort", d.listenPort),
+        filter = j.optString("filter", d.filter),
+        igateName = j.optString("igateName", d.igateName),
+        source = runCatching { ProxySource.valueOf(j.optString("source", d.source.name)) }
+            .getOrDefault(d.source),
+        radioToClients = j.optBoolean("radioToClients", d.radioToClients),
+        radioToInternet = j.optBoolean("radioToInternet", d.radioToInternet),
+        internetToRadio = j.optBoolean("internetToRadio", d.internetToRadio),
+        clientsToRadio = j.optBoolean("clientsToRadio", d.clientsToRadio),
+        clientsToInternet = j.optBoolean("clientsToInternet", d.clientsToInternet),
+        internetToClients = j.optBoolean("internetToClients", d.internetToClients),
+        radioToClientsCache = j.optBoolean("radioToClientsCache", d.radioToClientsCache),
+        internetToClientsCache = j.optBoolean("internetToClientsCache", d.internetToClientsCache),
+        applyQar = j.optBoolean("applyQar", d.applyQar),
+        pingSeconds = j.optLong("pingSeconds", d.pingSeconds),
+        cacheSeconds = j.optLong("cacheSeconds", d.cacheSeconds),
+        idleTimeoutSeconds = j.optLong("idleTimeoutSeconds", d.idleTimeoutSeconds),
+        aisEnabled = j.optBoolean("aisEnabled", d.aisEnabled),
+        aisPort = j.optInt("aisPort", d.aisPort),
+        radioToAis = j.optBoolean("radioToAis", d.radioToAis),
+        internetToAis = j.optBoolean("internetToAis", d.internetToAis),
+        radioToAisCache = j.optBoolean("radioToAisCache", d.radioToAisCache),
+        internetToAisCache = j.optBoolean("internetToAisCache", d.internetToAisCache),
+    )
 }

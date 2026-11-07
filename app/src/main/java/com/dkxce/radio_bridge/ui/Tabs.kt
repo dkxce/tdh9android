@@ -25,6 +25,8 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.SettingsBackupRestore
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -124,6 +126,11 @@ fun ServerTab(
 ) {
     var mode by remember(state.serverMode) { mutableStateOf(state.serverMode) }
     var port by remember(state.port) { mutableStateOf(state.port.toString()) }
+
+    // Auto-save server settings on every field change
+    LaunchedEffect(mode, port) {
+        onSaveConfig(BridgeConfig(serverMode = mode, port = port.toIntOrNull() ?: 8023))
+    }
 
     Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         // Mode selector
@@ -226,7 +233,11 @@ fun LogTab(state: UiState, onClearLog: () -> Unit) {
 
 /** About tab: program author and info. / О программе. */
 @Composable
-fun AboutTab(onExitApp: () -> Unit) {
+fun AboutTab(
+    onExitApp: () -> Unit,
+    onExportSettings: () -> Unit,
+    onImportSettings: () -> Unit,
+) {
     val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
     @Composable
     fun link(url: String, label: String) {
@@ -267,6 +278,19 @@ fun AboutTab(onExitApp: () -> Unit) {
             style = MaterialTheme.typography.bodySmall)
         Spacer(Modifier.height(16.dp))
         Button(
+            onClick = onExportSettings,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Icon(Icons.Filled.Save, null); Spacer(Modifier.width(6.dp)); Text("Export settings (JSON)")
+        }
+        Button(
+            onClick = onImportSettings,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Icon(Icons.Filled.SettingsBackupRestore, null); Spacer(Modifier.width(6.dp)); Text("Import settings (JSON)")
+        }
+        Spacer(Modifier.height(8.dp))
+        Button(
             onClick = onExitApp,
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
             modifier = Modifier.fillMaxWidth(),
@@ -285,6 +309,7 @@ fun ProxyTab(
     onSaveProxyConfig: (ProxyConfig) -> Unit,
     onResetProxyStats: () -> Unit,
     onClearProxyLog: () -> Unit,
+    onClearCache: () -> Unit,
 ) {
     val pcfg = state.proxyConfig
     var callsign by remember(pcfg.callsign) { mutableStateOf(pcfg.callsign) }
@@ -401,22 +426,35 @@ fun ProxyTab(
 
         // forwarding switches
         Text("Forwarding:", style = MaterialTheme.typography.labelLarge)
-        Row { Checkbox(checked = radioToClients, onCheckedChange = { radioToClients = it })
-            Text("radio -> clients", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
+        // radio out
         Row { Checkbox(checked = radioToInternet, onCheckedChange = { radioToInternet = it })
             Text("radio -> internet", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
+        Row { Checkbox(checked = radioToClients, onCheckedChange = { radioToClients = it })
+            Text("radio -> clients", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
+        Row { Checkbox(checked = radioToClientsCache, onCheckedChange = { radioToClientsCache = it })
+            Text("radio -> clients cache", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
+        Row { Checkbox(checked = radioToAis, onCheckedChange = { radioToAis = it })
+            Text("radio -> ais", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
+        Row { Checkbox(checked = radioToAisCache, onCheckedChange = { radioToAisCache = it })
+            Text("radio -> ais cache", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
+        Spacer(Modifier.height(4.dp))
+        // internet out
         Row { Checkbox(checked = internetToRadio, onCheckedChange = { internetToRadio = it })
             Text("internet -> radio", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
+        Row { Checkbox(checked = internetToClients, onCheckedChange = { internetToClients = it })
+            Text("internet -> clients", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
+        Row { Checkbox(checked = internetToClientsCache, onCheckedChange = { internetToClientsCache = it })
+            Text("internet -> clients cache", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
+        Row { Checkbox(checked = internetToAis, onCheckedChange = { internetToAis = it })
+            Text("internet -> ais", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
+        Row { Checkbox(checked = internetToAisCache, onCheckedChange = { internetToAisCache = it })
+            Text("internet -> ais cache", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
+        Spacer(Modifier.height(4.dp))
+        // clients out
         Row { Checkbox(checked = clientsToRadio, onCheckedChange = { clientsToRadio = it })
             Text("clients -> radio", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
         Row { Checkbox(checked = clientsToInternet, onCheckedChange = { clientsToInternet = it })
             Text("clients -> internet", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
-        Row { Checkbox(checked = internetToClients, onCheckedChange = { internetToClients = it })
-            Text("internet -> clients", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
-        Row { Checkbox(checked = radioToClientsCache, onCheckedChange = { radioToClientsCache = it })
-            Text("radio -> clients cache", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
-        Row { Checkbox(checked = internetToClientsCache, onCheckedChange = { internetToClientsCache = it })
-            Text("internet -> clients cache", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
         Row { Checkbox(checked = applyQar, onCheckedChange = { applyQar = it })
             Text("apply ,qAR,<IGATE_NAME> on radio out", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
 
@@ -470,6 +508,7 @@ fun ProxyTab(
             Text("RX clients: ${s.rxClients}   TX clients: ${s.txClients}")
             Text("TX AIS: ${s.txAis}")
             TextButton(onClick = onResetProxyStats) { Text("Reset stats") }
+            TextButton(onClick = onClearCache) { Text("Clear cache") }
 
             // active clients
             if (s.clientList.isNotEmpty()) {
@@ -541,6 +580,11 @@ fun IGateTab(
             checkNoQao = checkNoQao,
             enabled = true,
         )
+    }
+
+    // Auto-save settings on every field change
+    LaunchedEffect(client, name, pass, server, port, filter, checkTcpip, checkNoQar, checkNoQao) {
+        onSaveIGateConfig(collectCfg())
     }
 
     Column(

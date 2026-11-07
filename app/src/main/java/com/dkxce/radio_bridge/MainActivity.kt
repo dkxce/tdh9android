@@ -92,9 +92,24 @@ class MainActivity : ComponentActivity() {
                     onClearProxyLog = {
                         startService(BridgeService.ACTION_CLEAR_PROXY_LOG)
                     },
+                    onClearCache = {
+                        startService(BridgeService.ACTION_CLEAR_CACHE)
+                    },
                     onSaveConfig = viewModel::saveConfig,
                     onClearLog = viewModel::clearLog,
                     onExitApp = { finishAffinity(); exitProcess(0) },
+                    onExportSettings = {
+                        runCatching {
+                            viewModel.exportSettings(java.io.File(filesDir, "settings.json").absolutePath)
+                            viewModel.appendLog("[Settings] exported to filesDir/settings.json")
+                        }.onFailure { viewModel.appendLog("[Settings!] export failed: $it") }
+                    },
+                    onImportSettings = {
+                        runCatching {
+                            viewModel.importSettings(java.io.File(filesDir, "settings.json").absolutePath)
+                            viewModel.appendLog("[Settings] imported from filesDir/settings.json")
+                        }.onFailure { viewModel.appendLog("[Settings!] import failed: $it") }
+                    },
                 )
             }
         }

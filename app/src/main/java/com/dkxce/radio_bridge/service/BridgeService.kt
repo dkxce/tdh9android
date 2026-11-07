@@ -112,6 +112,7 @@ class BridgeService : Service() {
             ACTION_STOP_PROXY -> stopProxy()
             ACTION_RESET_PROXY_STATS -> { proxy?.resetStats() }
             ACTION_CLEAR_PROXY_LOG -> { proxy?.clearPacketLog() }
+            ACTION_CLEAR_CACHE -> { proxy?.clearCaches() }
             ACTION_SEND_RADIO -> {
                 val data = intent.getByteArrayExtra(EXTRA_KISS)
                 if (data != null) sendToRadio(data)
@@ -380,6 +381,7 @@ class BridgeService : Service() {
         const val ACTION_STOP_PROXY = "com.dkxce.radio_bridge.ACTION_STOP_PROXY"
         const val ACTION_RESET_PROXY_STATS = "com.dkxce.radio_bridge.ACTION_RESET_PROXY_STATS"
         const val ACTION_CLEAR_PROXY_LOG = "com.dkxce.radio_bridge.ACTION_CLEAR_PROXY_LOG"
+        const val ACTION_CLEAR_CACHE = "com.dkxce.radio_bridge.ACTION_CLEAR_CACHE"
         const val ACTION_SEND_RADIO = "com.dkxce.radio_bridge.ACTION_SEND_RADIO"
         const val EXTRA_ADDR = "addr"
         const val EXTRA_KISS = "kiss"
