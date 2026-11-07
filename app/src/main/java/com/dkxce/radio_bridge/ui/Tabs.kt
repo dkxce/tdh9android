@@ -254,9 +254,9 @@ fun AboutTab(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text("TDH9RadioBridge", style = MaterialTheme.typography.headlineMedium)
-        Text("BLE KISS TNC bridge: TIDRadio TD-H9 ⇄ TCP/IP (KISS / AGWPE / APRS-IS)",
+        Text("BLE KISS TNC bridge: TIDRadio TD-H9 ⇄ TCP/IP (KISS / AGWPE / APRS-IS / AIS)",
             style = MaterialTheme.typography.bodyMedium)
-        Text("Version: v1.1.0", style = MaterialTheme.typography.bodySmall)
+        Text("Version: v1.2.0", style = MaterialTheme.typography.bodySmall)
         Spacer(Modifier.height(8.dp))
         Text("Author: dkxce", style = MaterialTheme.typography.titleMedium)
         link("https://github.com/dkxce", "GitHub: https://github.com/dkxce")

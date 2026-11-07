@@ -61,13 +61,13 @@ class MainActivity : ComponentActivity() {
                 SettingsAction.EXPORT -> {
                     runCatching {
                         viewModel.exportSettingsToFolder(uri.toString())
-                        viewModel.appendLog("[Settings] exported: $uri/settings.json")
+                        viewModel.appendLog("[Settings] exported: $uri/TDH9RadioBridgeBackup.json")
                     }.onFailure { viewModel.appendLog("[Settings!] export failed: $it") }
                 }
                 SettingsAction.IMPORT -> {
                     runCatching {
                         viewModel.importSettingsFromFolder(uri.toString())
-                        viewModel.appendLog("[Settings] imported: $uri/settings.json")
+                        viewModel.appendLog("[Settings] imported: $uri/TDH9RadioBridgeBackup.json")
                     }.onFailure { viewModel.appendLog("[Settings!] import failed: $it") }
                 }
             }

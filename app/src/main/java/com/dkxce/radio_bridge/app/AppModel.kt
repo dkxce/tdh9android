@@ -339,7 +339,7 @@ class AppModel private constructor(context: Context) {
         val resolver = ctx.contentResolver
         val folder = DocumentFile.fromTreeUri(ctx, android.net.Uri.parse(folderUriString))
             ?: throw java.io.IOException("fromTreeUri failed")
-        val name = "settings.json"
+        val name = "TDH9RadioBridgeBackup.json"
         // reuse existing file if any, otherwise create a new one
         val file = folder.findFile(name)
             ?: folder.createFile("application/json", name)
@@ -354,8 +354,8 @@ class AppModel private constructor(context: Context) {
         val resolver = ctx.contentResolver
         val folder = DocumentFile.fromTreeUri(ctx, android.net.Uri.parse(folderUriString))
             ?: throw java.io.IOException("fromTreeUri failed")
-        val file = folder.findFile("settings.json")
-            ?: throw java.io.IOException("settings.json not found in folder")
+        val file = folder.findFile("TDH9RadioBridgeBackup.json")
+            ?: throw java.io.IOException("TDH9RadioBridgeBackup.json not found in folder")
         val text = resolver.openInputStream(file.uri)?.bufferedReader()?.readText()
             ?: throw java.io.IOException("openInputStream failed")
         parseSettingsJson(text)
