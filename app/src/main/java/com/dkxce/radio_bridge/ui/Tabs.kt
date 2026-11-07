@@ -250,7 +250,7 @@ fun AboutTab(
         )
     }
     Column(
-        Modifier.fillMaxSize().padding(20.dp),
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text("TDH9RadioBridge", style = MaterialTheme.typography.headlineMedium)
@@ -481,14 +481,7 @@ fun ProxyTab(
             label = { Text("AIS port") }, singleLine = true,
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                 keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
-        Row { Checkbox(checked = radioToAis, onCheckedChange = { radioToAis = it })
-            Text("radio -> AIS", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
-        Row { Checkbox(checked = radioToAisCache, onCheckedChange = { radioToAisCache = it })
-            Text("radio -> AIS cache", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
-        Row { Checkbox(checked = internetToAis, onCheckedChange = { internetToAis = it })
-            Text("internet -> AIS", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
-        Row { Checkbox(checked = internetToAisCache, onCheckedChange = { internetToAisCache = it })
-            Text("internet -> AIS cache", modifier = Modifier.align(androidx.compose.ui.Alignment.CenterVertically)) }
+        // (radio/internet -> AIS forwarding switches live in the Forwarding group above)
 
         if (state.proxyRunning) {
             Button(onClick = onStopProxy,

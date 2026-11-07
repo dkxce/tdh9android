@@ -50,4 +50,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun exportSettings(path: String) = model.exportSettings(java.io.File(path))
     fun importSettings(path: String) = model.importSettings(java.io.File(path))
+    // Export/import into a SAF folder (decided by URI). Pass folderUri string.
+    fun exportSettingsToFolder(folderUri: String) = model.exportSettingsToFolder(folderUri)
+    fun importSettingsFromFolder(folderUri: String) = model.importSettingsFromFolder(folderUri)
 }

@@ -17,6 +17,7 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -39,6 +40,22 @@ class MainActivity : ComponentActivity() {
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { /* ignore result; user can retry via button */ }
+
+    private val settingsFolderLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            runCatching {
+                contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+                )
+            }
+            getSharedPreferences("radio_bridge", Context.MODE_PRIVATE)
+                .edit().putString("settings_folder_uri", uri.toString()).apply()
+            viewModel.appendLog("[Settings] folder selected: $uri")
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -99,16 +116,30 @@ class MainActivity : ComponentActivity() {
                     onClearLog = viewModel::clearLog,
                     onExitApp = { finishAffinity(); exitProcess(0) },
                     onExportSettings = {
-                        runCatching {
-                            viewModel.exportSettings(java.io.File(filesDir, "settings.json").absolutePath)
-                            viewModel.appendLog("[Settings] exported to filesDir/settings.json")
-                        }.onFailure { viewModel.appendLog("[Settings!] export failed: $it") }
+                        val uri = getSharedPreferences("radio_bridge", Context.MODE_PRIVATE)
+                            .getString("settings_folder_uri", null)
+                        if (uri == null) {
+                            viewModel.appendLog("[Settings] select a folder first")
+                            settingsFolderLauncher.launch(null)
+                        } else {
+                            runCatching {
+                                viewModel.exportSettingsToFolder(uri)
+                                viewModel.appendLog("[Settings] exported to selected folder")
+                            }.onFailure { viewModel.appendLog("[Settings!] export failed: $it") }
+                        }
                     },
                     onImportSettings = {
-                        runCatching {
-                            viewModel.importSettings(java.io.File(filesDir, "settings.json").absolutePath)
-                            viewModel.appendLog("[Settings] imported from filesDir/settings.json")
-                        }.onFailure { viewModel.appendLog("[Settings!] import failed: $it") }
+                        val uri = getSharedPreferences("radio_bridge", Context.MODE_PRIVATE)
+                            .getString("settings_folder_uri", null)
+                        if (uri == null) {
+                            viewModel.appendLog("[Settings] select a folder first")
+                            settingsFolderLauncher.launch(null)
+                        } else {
+                            runCatching {
+                                viewModel.importSettingsFromFolder(uri)
+                                viewModel.appendLog("[Settings] imported from selected folder")
+                            }.onFailure { viewModel.appendLog("[Settings!] import failed: $it") }
+                        }
                     },
                 )
             }

@@ -71,6 +71,8 @@ data class BleDeviceUi(val address: String, val name: String = "", val rssi: Int
  */
 class AppModel private constructor(context: Context) {
 
+    private val ctx = context.applicationContext
+
     companion object {
         @Volatile
         private var instance: AppModel? = null
@@ -300,6 +302,58 @@ class AppModel private constructor(context: Context) {
         // proxy
         val p = o.optJSONObject("proxy")
         if (p != null) saveProxyConfig(proxyFromJson(p, _ui.value.proxyConfig))
+    }
+
+    /** Build the settings JSON string (used by both file and SAF exports). */
+    private fun settingsJson(): String {
+        val o = org.json.JSONObject()
+        val bridge = _ui.value.let { u ->
+            org.json.JSONObject()
+                .put("serverMode", u.serverMode.name)
+                .put("port", u.port)
+        }
+        o.put("bridge", bridge)
+        o.put("igate", igateToJson(_ui.value.igateConfig))
+        o.put("proxy", proxyToJson(_ui.value.proxyConfig))
+        return o.toString(2)
+    }
+
+    private fun parseSettingsJson(text: String) {
+        val o = org.json.JSONObject(text)
+        val b = o.optJSONObject("bridge")
+        if (b != null) {
+            val mode = runCatching { ServerMode.valueOf(b.optString("serverMode", ServerMode.KISS.name)) }
+                .getOrDefault(ServerMode.KISS)
+            saveConfig(BridgeConfig(serverMode = mode, port = b.optInt("port", 8023)))
+        }
+        val i = o.optJSONObject("igate")
+        if (i != null) saveIGateConfig(igateFromJson(i, _ui.value.igateConfig))
+        val p = o.optJSONObject("proxy")
+        if (p != null) saveProxyConfig(proxyFromJson(p, _ui.value.proxyConfig))
+    }
+
+    // Export settings as settings.json inside a SAF folder Uri.
+    @Throws(java.io.IOException::class)
+    fun exportSettingsToFolder(folderUriString: String) {
+        val resolver = ctx.contentResolver
+        val folderUri = android.net.Uri.parse(folderUriString)
+        val name = "settings.json"
+        val newUri = android.provider.DocumentsContract.createDocument(resolver, folderUri, "application/json", name)
+            ?: throw java.io.IOException("createDocument failed")
+        resolver.openOutputStream(newUri)?.use { it.write(settingsJson().toByteArray(Charsets.UTF_8)) }
+            ?: throw java.io.IOException("openOutputStream failed")
+    }
+
+    // Import settings.json from a SAF folder Uri.
+    @Throws(java.io.IOException::class)
+    fun importSettingsFromFolder(folderUriString: String) {
+        val resolver = ctx.contentResolver
+        val folderUri = android.net.Uri.parse(folderUriString)
+        val name = "settings.json"
+        val docUri = android.provider.DocumentsContract.buildDocumentUriUsingTree(folderUri, name)
+        val text = resolver.openInputStream(docUri)?.bufferedReader()?.readText()
+            ?: throw java.io.IOException("openInputStream failed")
+        parseSettingsJson(text)
     }
 
     private fun igateToJson(c: IGateConfig): org.json.JSONObject = org.json.JSONObject()
