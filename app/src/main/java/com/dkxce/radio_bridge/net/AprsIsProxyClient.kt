@@ -168,16 +168,6 @@ class AprsIsProxyClient(
     /** Install a callback fired whenever stats change (UI refresh). */
     fun setOnStatsChanged(cb: () -> Unit) { onStatsChanged = cb }
 
-    /** Zero all counters and clear the packet log. */
-    fun resetStats() {
-        synchronized(statsLock) {
-            rxRadio = 0; txRadio = 0; rxInternet = 0
-            txInternet = 0; rxClients = 0; txClients = 0
-            packetsLog.clear()
-        }
-        onStatsChanged?.invoke()
-    }
-
 fun clearPacketLog() {
         synchronized(statsLock) { packetsLog.clear() }
         onStatsChanged?.invoke()
