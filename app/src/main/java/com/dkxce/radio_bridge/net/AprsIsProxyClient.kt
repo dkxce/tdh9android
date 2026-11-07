@@ -216,10 +216,14 @@ fun clearPacketLog() {
     // ------------------------------------------------------------------ public
     val isConnected: Boolean get() = upstreamConnected
 
-    fun clientList(): List<String> = clients.map { c ->
-        "aprs://${c.callsign.ifEmpty { "?" }}@${c.address}:${c.port}" +
-            (if (c.verified) "/tx" else "/rx")
-    }
+    fun clientList(): List<String> =
+        clients.map { c ->
+            "aprs://${c.callsign.ifEmpty { "?" }}@${c.address}:${c.port}" +
+                (if (c.verified) "/tx" else "/rx")
+        } + aisClients.map { s ->
+            // AIS clients are read-only NMEA feeds
+            "ais://${s.inetAddress?.hostAddress ?: "?"}:${s.port}/rx"
+        }
 
     fun start() {
         if (running) return
