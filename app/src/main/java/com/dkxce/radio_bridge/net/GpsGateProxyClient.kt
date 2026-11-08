@@ -217,33 +217,38 @@ class GpsGateProxyClient(
     }
 
     private fun sendToServer(server: GpsGateServer, pos: FrcmdPosition, target: String) {
-        val imei = GpsGateProtocol.resolveImei(server, pos.senderId)
-        val payload = GpsGateProtocol.buildPacket(server.proto, imei, pos, cfg.timestampMode)
-        val payloadText = payload.toString(Charsets.UTF_8).trim()
-        val ok = try {
-            val s = Socket()
-            try {
-                s.connect(InetSocketAddress(server.host, server.port), 10000)
-                s.soTimeout = 5000
-                s.getOutputStream().write(payload)
-                s.getOutputStream().flush()
-                // read a little (up to some bytes) - some servers reply; ignored
-                try { s.getInputStream().read(ByteArray(64)) } catch (_: Exception) { }
-                true
-            } finally {
-                try { s.close() } catch (_: Exception) { }
+        try {
+            val imei = GpsGateProtocol.resolveImei(server, pos.senderId)
+            val payload = GpsGateProtocol.buildPacket(server.proto, imei, pos, cfg.timestampMode)
+            val payloadText = payload.toString(Charsets.UTF_8).trim()
+            val ok = try {
+                val s = Socket()
+                try {
+                    s.connect(InetSocketAddress(server.host, server.port), 10000)
+                    s.soTimeout = 5000
+                    s.getOutputStream().write(payload)
+                    s.getOutputStream().flush()
+                    // read a little (up to some bytes) - some servers reply; ignored
+                    try { s.getInputStream().read(ByteArray(64)) } catch (_: Exception) { }
+                    true
+                } finally {
+                    try { s.close() } catch (_: Exception) { }
+                }
+            } catch (e: Exception) {
+                false
+            }
+            if (ok) {
+                synchronized(statsLock) { txPackets++ }
+                onLog.log("[GPSGate] -> ${server.host}:${server.port} [${server.proto.name}] OK (imei=$imei)")
+                onLog.log("[GPSGate]    ${payloadText}")
+            } else {
+                synchronized(statsLock) { failedPackets++ }
+                onLog.log("[GPSGate!] -> ${server.host}:${server.port} [${server.proto.name}] failed (imei=$imei)")
+                onLog.log("[GPSGate]    ${payloadText}")
             }
         } catch (e: Exception) {
-            false
-        }
-        if (ok) {
-            synchronized(statsLock) { txPackets++ }
-            onLog.log("[GPSGate] -> ${server.host}:${server.port} [${server.proto.name}] OK (imei=$imei)")
-            onLog.log("[GPSGate]    ${payloadText}")
-        } else {
             synchronized(statsLock) { failedPackets++ }
-            onLog.log("[GPSGate!] -> ${server.host}:${server.port} [${server.proto.name}] failed (imei=$imei)")
-            onLog.log("[GPSGate]    ${payloadText}")
+            onLog.log("[GPSGate!] -> ${server.host}:${server.port} ERROR: ${e.message}")
         }
         bump()
     }
