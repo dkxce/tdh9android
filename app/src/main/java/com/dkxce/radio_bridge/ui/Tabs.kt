@@ -741,7 +741,7 @@ fun GpsGateTab(
                                 onValueChange = { servers[idx] = s.copy(imeiText = it) },
                                 label = { Text("IMEI text (CRC64 -> IMEI)") }, singleLine = true)
                         GpsGateImeiSource.CRC_FRCMD ->
-                            Text("IMEI = CRC64($FRCMD sender id)", style = MaterialTheme.typography.bodySmall,
+                            Text("IMEI = CRC64(\$FRCMD sender id)", style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }

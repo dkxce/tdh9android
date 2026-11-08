@@ -134,7 +134,7 @@ object GpsGateProtocol {
             cl.get(java.util.Calendar.HOUR_OF_DAY), cl.get(java.util.Calendar.MINUTE),
             cl.get(java.util.Calendar.SECOND))
         val knots = pos.speedKmh / 1.852
-        val sb = StringBuilder("$MGV002,")
+        val sb = StringBuilder("\$MGV002,")
             .append(imei).append(',').append(imei).append(",S,")
             .append(date).append(',').append(time).append(",A,")
             .append(nmeaLat(pos.lat)).append(",N,")
