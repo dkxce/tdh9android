@@ -219,6 +219,7 @@ class GpsGateProxyClient(
     private fun sendToServer(server: GpsGateServer, pos: FrcmdPosition, target: String) {
         val imei = GpsGateProtocol.resolveImei(server, pos.senderId)
         val payload = GpsGateProtocol.buildPacket(server.proto, imei, pos, cfg.timestampMode)
+        val payloadText = payload.toString(Charsets.UTF_8).trim()
         val ok = try {
             val s = Socket()
             try {
@@ -238,9 +239,11 @@ class GpsGateProxyClient(
         if (ok) {
             synchronized(statsLock) { txPackets++ }
             onLog.log("[GPSGate] -> ${server.host}:${server.port} [${server.proto.name}] OK (imei=$imei)")
+            onLog.log("[GPSGate]    ${payloadText}")
         } else {
             synchronized(statsLock) { failedPackets++ }
             onLog.log("[GPSGate!] -> ${server.host}:${server.port} [${server.proto.name}] failed (imei=$imei)")
+            onLog.log("[GPSGate]    ${payloadText}")
         }
         bump()
     }
