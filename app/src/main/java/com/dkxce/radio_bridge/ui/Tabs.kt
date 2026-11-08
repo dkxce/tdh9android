@@ -264,7 +264,7 @@ fun AboutTab(
         Text("TDH9RadioBridge", style = MaterialTheme.typography.headlineMedium)
         Text("BLE KISS TNC bridge: TIDRadio TD-H9 ⇄ TCP/IP (KISS / AGWPE / APRS-IS / AIS)",
             style = MaterialTheme.typography.bodyMedium)
-        Text("Version: v1.3.0", style = MaterialTheme.typography.bodySmall)
+        Text("Version: v1.3.0 extended", style = MaterialTheme.typography.bodySmall)
         Spacer(Modifier.height(8.dp))
         Text("Author: dkxce", style = MaterialTheme.typography.titleMedium)
         link("https://github.com/dkxce", "GitHub: https://github.com/dkxce")
