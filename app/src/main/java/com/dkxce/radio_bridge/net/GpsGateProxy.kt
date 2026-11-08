@@ -43,9 +43,9 @@ enum class GpsGateImeiSource {
  *                   before sending.
  */
 enum class GpsGateTimestampMode(val display: String) {
-    UTC_NO_FIX("UTC Timestamp (No Fix)"),
-    LOCAL_FIX_UTC("Local Timestamp (Fix)"),
-    UTC_FIX_LOCAL("UTC -> Local Timestamp (Fix)"),
+    UTC_NO_FIX("UTC -> UTC (No fix)"),
+    LOCAL_FIX_UTC("Local -> UTC (Fix)"),
+    UTC_FIX_LOCAL("UTC -> Local (Fix)"),
 }
 
 /** One outbound server (host:port + protocol + IMEI rule). */
