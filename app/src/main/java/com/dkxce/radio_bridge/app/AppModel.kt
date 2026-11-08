@@ -259,6 +259,7 @@ class AppModel private constructor(context: Context) {
             .apply()
         cfg.servers.forEachIndexed { i, s ->
             prefs.edit()
+                .putString("gpsgate_srv_${i}_name", s.name)
                 .putBoolean("gpsgate_srv_${i}_enabled", s.enabled)
                 .putString("gpsgate_srv_${i}_host", s.host)
                 .putInt("gpsgate_srv_${i}_port", s.port)
@@ -275,6 +276,7 @@ class AppModel private constructor(context: Context) {
         val count = prefs.getInt("gpsgate_server_count", 1).coerceAtMost(8)
         val servers = (0 until count).map { i ->
             GpsGateServer(
+                name = prefs.getString("gpsgate_srv_${i}_name", "Server ${i + 1}")!!,
                 enabled = prefs.getBoolean("gpsgate_srv_${i}_enabled", i == 0),
                 host = prefs.getString("gpsgate_srv_${i}_host", "vega.livegpstracks.ru")!!,
                 port = prefs.getInt("gpsgate_srv_${i}_port", 3333),
@@ -292,8 +294,8 @@ class AppModel private constructor(context: Context) {
             enabled = prefs.getBoolean("gpsgate_enabled", false),
             listenPort = prefs.getInt("gpsgate_listen_port", 12014),
             timestampMode = runCatching {
-                GpsGateTimestampMode.valueOf(prefs.getString("gpsgate_timestamp_mode", GpsGateTimestampMode.UTC_NO_FIX.name)!!)
-            }.getOrDefault(GpsGateTimestampMode.UTC_NO_FIX),
+                GpsGateTimestampMode.valueOf(prefs.getString("gpsgate_timestamp_mode", GpsGateTimestampMode.LOCAL_FIX_UTC.name)!!)
+            }.getOrDefault(GpsGateTimestampMode.LOCAL_FIX_UTC),
             servers = servers,
         )
         _ui.value = _ui.value.copy(gpsGateConfig = cfg)
@@ -574,6 +576,7 @@ val p = o.optJSONObject("proxy")
         val servers = org.json.JSONArray()
         c.servers.forEach { s ->
             servers.put(org.json.JSONObject()
+                .put("name", s.name)
                 .put("enabled", s.enabled)
                 .put("host", s.host)
                 .put("port", s.port)
@@ -595,6 +598,7 @@ val p = o.optJSONObject("proxy")
             (0 until arr.length().coerceAtMost(8)).map { i ->
                 val s = arr.getJSONObject(i)
                 GpsGateServer(
+                    name = s.optString("name", "Server ${i + 1}"),
                     enabled = s.optBoolean("enabled", false),
                     host = s.optString("host", "vega.livegpstracks.ru"),
                     port = s.optInt("port", 3333),
@@ -612,8 +616,8 @@ val p = o.optJSONObject("proxy")
             enabled = j.optBoolean("enabled", d.enabled),
             listenPort = j.optInt("listenPort", d.listenPort),
             timestampMode = runCatching {
-                GpsGateTimestampMode.valueOf(j.optString("timestampMode", GpsGateTimestampMode.UTC_NO_FIX.name))
-            }.getOrDefault(GpsGateTimestampMode.UTC_NO_FIX),
+                GpsGateTimestampMode.valueOf(j.optString("timestampMode", GpsGateTimestampMode.LOCAL_FIX_UTC.name))
+            }.getOrDefault(GpsGateTimestampMode.LOCAL_FIX_UTC),
             servers = servers,
         )
     }

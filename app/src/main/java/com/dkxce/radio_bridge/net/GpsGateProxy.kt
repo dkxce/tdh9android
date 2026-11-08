@@ -50,6 +50,7 @@ enum class GpsGateTimestampMode(val display: String) {
 
 /** One outbound server (host:port + protocol + IMEI rule). */
 data class GpsGateServer(
+    val name: String = "",
     val enabled: Boolean = false,
     val host: String = "vega.livegpstracks.ru",
     val port: Int = 3333,
@@ -63,9 +64,9 @@ data class GpsGateServer(
 data class GpsGateProxyConfig(
     val enabled: Boolean = false,        // master switch (UI)
     val listenPort: Int = 12014,         // local HTTP listener port
-    val timestampMode: GpsGateTimestampMode = GpsGateTimestampMode.UTC_NO_FIX,
+    val timestampMode: GpsGateTimestampMode = GpsGateTimestampMode.LOCAL_FIX_UTC,
     val servers: List<GpsGateServer> = listOf(
-        GpsGateServer(enabled = true, host = "vega.livegpstracks.ru", port = 3333,
+        GpsGateServer(name = "Server 1", enabled = true, host = "vega.livegpstracks.ru", port = 3333,
             proto = GpsGateProto.RTT006, imeiSource = GpsGateImeiSource.CRC_FRCMD),
     ),
 )

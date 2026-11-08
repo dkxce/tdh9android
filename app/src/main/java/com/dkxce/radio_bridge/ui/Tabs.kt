@@ -744,7 +744,6 @@ fun GpsGateTab(
             key(idx) {
                 GpsGateServerCard(
                     server = s,
-                    index = idx,
                     onChange = { servers[idx] = it },
                     onRemove = { servers.removeAt(idx) },
                 )
@@ -752,7 +751,8 @@ fun GpsGateTab(
         }
         Button(onClick = {
             if (servers.size < 8) {
-                servers.add(GpsGateServer(enabled = true, host = "vega.livegpstracks.ru", port = 3333,
+                servers.add(GpsGateServer(name = "Server ${servers.size + 1}", enabled = true,
+                    host = "vega.livegpstracks.ru", port = 3333,
                     proto = GpsGateProto.RTT006, imeiSource = GpsGateImeiSource.CRC_FRCMD))
             }
         }, enabled = servers.size < 8) { Text("Add server") }
@@ -806,7 +806,6 @@ private val GPSGATE_PRESETS = listOf(
 @Composable
 private fun GpsGateServerCard(
     server: GpsGateServer,
-    index: Int,
     onChange: (GpsGateServer) -> Unit,
     onRemove: () -> Unit,
 ) {
@@ -820,7 +819,14 @@ private fun GpsGateServerCard(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = server.enabled,
                     onCheckedChange = { onChange(server.copy(enabled = it)) })
-                Text("Server ${index + 1}", modifier = Modifier.weight(1f))
+                OutlinedTextField(
+                    value = server.name,
+                    onValueChange = { onChange(server.copy(name = it)) },
+                    label = { Text("Name") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.width(6.dp))
                 OutlinedButton(onClick = onRemove) { Text("Remove") }
             }
 
