@@ -82,7 +82,10 @@ object GpsGateProtocol {
      */
     fun resolveTimestamp(pos: FrcmdPosition, mode: GpsGateTimestampMode): java.util.Calendar? {
         val dd = pos.dateDdmmyy
-        val tt = pos.timeHhmmss
+        // time may carry milliseconds (e.g. "230002.000"): take the whole
+        // HHMMSS part before any '.' and tolerate surrounding whitespace
+        val rawTime = pos.timeHhmmss.trim()
+        val tt = rawTime.substringBefore('.')
         if (dd.length != 6 || tt.length != 6) return null
         val day = dd.substring(0, 2).toIntOrNull() ?: return null
         val month = dd.substring(2, 4).toIntOrNull() ?: return null
