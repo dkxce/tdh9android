@@ -40,6 +40,7 @@ import com.dkxce.radio_bridge.net.GpsGateImeiSource
 import com.dkxce.radio_bridge.net.GpsGateProto
 import com.dkxce.radio_bridge.net.GpsGateProxyConfig
 import com.dkxce.radio_bridge.net.GpsGateServer
+import com.dkxce.radio_bridge.net.GpsGateTimestampMode
 import com.dkxce.radio_bridge.net.ProxyConfig
 import com.dkxce.radio_bridge.net.ProxySource
 import androidx.compose.runtime.toMutableStateList
@@ -691,18 +692,20 @@ fun GpsGateTab(
 ) {
     val gcfg = state.gpsGateConfig
     var listenPort by remember(gcfg.listenPort) { mutableStateOf(gcfg.listenPort.toString()) }
+    var timestampMode by remember(gcfg.timestampMode) { mutableStateOf(gcfg.timestampMode) }
     val servers = remember(gcfg.servers) { gcfg.servers.toMutableStateList() }
 
     fun collectCfg(): GpsGateProxyConfig {
         return GpsGateProxyConfig(
             enabled = true,
             listenPort = listenPort.toIntOrNull() ?: 12014,
+            timestampMode = timestampMode,
             servers = servers.toList(),
         )
     }
 
     // Auto-save on field change
-    LaunchedEffect(listenPort, servers.toList()) {
+    LaunchedEffect(listenPort, timestampMode, servers.toList()) {
         onSaveGpsGateConfig(collectCfg())
         onReapplyConfig()
     }
@@ -719,6 +722,21 @@ fun GpsGateTab(
             label = { Text("Local HTTP port") }, singleLine = true,
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                 keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
+
+        // timezone preset: how the $FRCMD timestamp is re-interpreted
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Timezone: ", style = MaterialTheme.typography.bodyMedium)
+            Box {
+                var tzExpanded by remember { mutableStateOf(false) }
+                OutlinedButton(onClick = { tzExpanded = true }) { Text(timestampMode.display) }
+                DropdownMenu(expanded = tzExpanded, onDismissRequest = { tzExpanded = false }) {
+                    GpsGateTimestampMode.entries.forEach { m ->
+                        DropdownMenuItem(text = { Text(m.display) },
+                            onClick = { timestampMode = m; tzExpanded = false })
+                    }
+                }
+            }
+        }
 
         // servers
         Text("Target servers:", style = MaterialTheme.typography.labelLarge)

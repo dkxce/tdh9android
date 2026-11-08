@@ -23,6 +23,7 @@ import com.dkxce.radio_bridge.net.GpsGateServer
 import com.dkxce.radio_bridge.net.GpsGateStats
 import com.dkxce.radio_bridge.net.GpsGateProto
 import com.dkxce.radio_bridge.net.GpsGateImeiSource
+import com.dkxce.radio_bridge.net.GpsGateTimestampMode
 import com.dkxce.radio_bridge.net.ProxyConfig
 import com.dkxce.radio_bridge.net.ProxySource
 import com.dkxce.radio_bridge.net.ProxyStats
@@ -253,6 +254,7 @@ class AppModel private constructor(context: Context) {
         prefs.edit()
             .putBoolean("gpsgate_enabled", cfg.enabled)
             .putInt("gpsgate_listen_port", cfg.listenPort)
+            .putString("gpsgate_timestamp_mode", cfg.timestampMode.name)
             .putInt("gpsgate_server_count", cfg.servers.size)
             .apply()
         cfg.servers.forEachIndexed { i, s ->
@@ -289,6 +291,9 @@ class AppModel private constructor(context: Context) {
         val cfg = GpsGateProxyConfig(
             enabled = prefs.getBoolean("gpsgate_enabled", false),
             listenPort = prefs.getInt("gpsgate_listen_port", 12014),
+            timestampMode = runCatching {
+                GpsGateTimestampMode.valueOf(prefs.getString("gpsgate_timestamp_mode", GpsGateTimestampMode.UTC_NO_FIX.name)!!)
+            }.getOrDefault(GpsGateTimestampMode.UTC_NO_FIX),
             servers = servers,
         )
         _ui.value = _ui.value.copy(gpsGateConfig = cfg)
@@ -580,6 +585,7 @@ val p = o.optJSONObject("proxy")
         return org.json.JSONObject()
             .put("enabled", c.enabled)
             .put("listenPort", c.listenPort)
+            .put("timestampMode", c.timestampMode.name)
             .put("servers", servers)
     }
 
@@ -605,6 +611,9 @@ val p = o.optJSONObject("proxy")
         return GpsGateProxyConfig(
             enabled = j.optBoolean("enabled", d.enabled),
             listenPort = j.optInt("listenPort", d.listenPort),
+            timestampMode = runCatching {
+                GpsGateTimestampMode.valueOf(j.optString("timestampMode", GpsGateTimestampMode.UTC_NO_FIX.name))
+            }.getOrDefault(GpsGateTimestampMode.UTC_NO_FIX),
             servers = servers,
         )
     }

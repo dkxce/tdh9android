@@ -32,6 +32,22 @@ enum class GpsGateImeiSource {
     CRC_FRCMD,     // CRC-64/ECMA over the $FRCMD sender id (first field after cmd)
 }
 
+/**
+ * How the timestamp inside the outbound packets (rtt006/MT60/GL200) is derived
+ * from the received $FRCMD dateDDMMYY/time fields.
+ *
+ *  - UTC_NO_FIX:   the $FRCMD time is UTC, use it as-is (no conversion).
+ *  - LOCAL_FIX_UTC: the $FRCMD time is local (device clock), convert it to UTC
+ *                   using the system time zone before sending.
+ *  - UTC_FIX_LOCAL: the $FRCMD time is UTC, convert it to the system local time
+ *                   before sending.
+ */
+enum class GpsGateTimestampMode(val display: String) {
+    UTC_NO_FIX("UTC Timestamp (No Fix)"),
+    LOCAL_FIX_UTC("Local Timestamp (Fix)"),
+    UTC_FIX_LOCAL("UTC -> Local Timestamp (Fix)"),
+}
+
 /** One outbound server (host:port + protocol + IMEI rule). */
 data class GpsGateServer(
     val enabled: Boolean = false,
@@ -47,6 +63,7 @@ data class GpsGateServer(
 data class GpsGateProxyConfig(
     val enabled: Boolean = false,        // master switch (UI)
     val listenPort: Int = 12014,         // local HTTP listener port
+    val timestampMode: GpsGateTimestampMode = GpsGateTimestampMode.UTC_NO_FIX,
     val servers: List<GpsGateServer> = listOf(
         GpsGateServer(enabled = true, host = "vega.livegpstracks.ru", port = 3333,
             proto = GpsGateProto.RTT006, imeiSource = GpsGateImeiSource.CRC_FRCMD),

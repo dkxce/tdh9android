@@ -33,6 +33,8 @@ data class FrcmdPosition(
     val speedKmh: Double,   // already km/h (value in packet)
     val course: Double,     // degrees
     val altitude: Double,   // meters
+    val dateDdmmyy: String = "",  // raw DDMMYY from the packet
+    val timeHhmmss: String = "",  // raw HHMMSS from the packet
 )
 
 object GpsGateProtocol {
@@ -53,6 +55,8 @@ object GpsGateProtocol {
         val speed = p.getOrNull(8)?.trim()?.toDoubleOrNull() ?: 0.0
         val course = p.getOrNull(9)?.trim()?.toDoubleOrNull() ?: 0.0
         val alt = p.getOrNull(10)?.trim()?.toDoubleOrNull() ?: 0.0
+        val date = p.getOrNull(11)?.trim() ?: ""
+        val time = p.getOrNull(12)?.trim() ?: ""
         return FrcmdPosition(
             senderId = sender,
             lat = if (ns == "S") -lat else lat,
@@ -60,7 +64,50 @@ object GpsGateProtocol {
             speedKmh = speed,
             course = course,
             altitude = alt,
+            dateDdmmyy = date,
+            timeHhmmss = time,
         )
+    }
+
+    // ------------------------------------------------------------- timestamp
+    /**
+     * Interpret the raw $FRCMD dateDDMMYY/time fields per [mode] and return a
+     * Calendar whose fields are already in the target time zone:
+     *
+     *  - UTC_NO_FIX:    the packet time is UTC          -> emitted as UTC.
+     *  - LOCAL_FIX_UTC: the packet time is system-local -> converted to UTC.
+     *  - UTC_FIX_LOCAL: the packet time is UTC          -> converted to system-local.
+     *
+     * Returns null when the fields are absent or malformed.
+     */
+    fun resolveTimestamp(pos: FrcmdPosition, mode: GpsGateTimestampMode): java.util.Calendar? {
+        val dd = pos.dateDdmmyy
+        val tt = pos.timeHhmmss
+        if (dd.length != 6 || tt.length != 6) return null
+        val day = dd.substring(0, 2).toIntOrNull() ?: return null
+        val month = dd.substring(2, 4).toIntOrNull() ?: return null
+        val year = 2000 + (dd.substring(4, 6).toIntOrNull() ?: return null)
+        val hour = tt.substring(0, 2).toIntOrNull() ?: return null
+        val min = tt.substring(2, 4).toIntOrNull() ?: return null
+        val sec = tt.substring(4, 6).toIntOrNull() ?: return null
+        // source zone: how the packet time is interpreted
+        val srcZone = when (mode) {
+            GpsGateTimestampMode.UTC_NO_FIX, GpsGateTimestampMode.UTC_FIX_LOCAL ->
+                java.util.TimeZone.getTimeZone("UTC")
+            GpsGateTimestampMode.LOCAL_FIX_UTC -> java.util.TimeZone.getDefault()
+        }
+        val cal = java.util.Calendar.getInstance(srcZone)
+        cal.clear()
+        cal.set(year, month - 1, day, hour, min, sec)
+        // target zone: how the packet time is emitted
+        val tgtZone = when (mode) {
+            GpsGateTimestampMode.UTC_NO_FIX, GpsGateTimestampMode.LOCAL_FIX_UTC ->
+                java.util.TimeZone.getTimeZone("UTC")
+            GpsGateTimestampMode.UTC_FIX_LOCAL -> java.util.TimeZone.getDefault()
+        }
+        val out = java.util.Calendar.getInstance(tgtZone)
+        out.timeInMillis = cal.timeInMillis
+        return out
     }
 
     // ------------------------------------------------------------------ CRC-64
@@ -98,16 +145,15 @@ object GpsGateProtocol {
     }
 
     // ------------------------------------------------------------------ rtt006
-    /** Frame: <7-digit-length>rtt006;IMEI;<data> */
-    fun buildRtt006(imei: String, pos: FrcmdPosition, unix: Long): String {
-        val cl = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
-        cl.timeInMillis = unix * 1000L
+    /** Frame: <7-digit-length>rtt006;IMEI;<data> (date/time from [cal]). */
+    fun buildRtt006(imei: String, pos: FrcmdPosition, cal: java.util.Calendar): String {
         val date = String.format(Locale.US, "%04d%02d%02d",
-            cl.get(java.util.Calendar.YEAR), cl.get(java.util.Calendar.MONTH) + 1,
-            cl.get(java.util.Calendar.DAY_OF_MONTH))
+            cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH) + 1,
+            cal.get(java.util.Calendar.DAY_OF_MONTH))
         val time = String.format(Locale.US, "%02d%02d%02d",
-            cl.get(java.util.Calendar.HOUR_OF_DAY), cl.get(java.util.Calendar.MINUTE),
-            cl.get(java.util.Calendar.SECOND))
+            cal.get(java.util.Calendar.HOUR_OF_DAY), cal.get(java.util.Calendar.MINUTE),
+            cal.get(java.util.Calendar.SECOND))
+        val unix = cal.timeInMillis / 1000L
         val hdop = java.math.BigDecimal.valueOf(3.0 / 8.0)
             .setScale(2, java.math.RoundingMode.UP).stripTrailingZeros().toPlainString()
 
@@ -124,15 +170,14 @@ object GpsGateProtocol {
     }
 
     // ------------------------------------------------------------------ MT60
-    /** Packet: $MGV002,<imei>,<imei>,S,ddMMyy,HHmmss,A,<latNMEA>,N,<lonNMEA>,E,00,12,00,hdop,speedKnots,heading,alt,,mcc,mnc,lac,cell,gsm,<x9 empty>,00,batt,Timer;! */
-    fun buildMt60(imei: String, pos: FrcmdPosition): String {
-        val cl = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
+    /** Packet: $MGV002,<imei>,<imei>,S,ddMMyy,HHmmss,A,... (date/time from [cal]). */
+    fun buildMt60(imei: String, pos: FrcmdPosition, cal: java.util.Calendar): String {
         val date = String.format(Locale.US, "%02d%02d%02d",
-            cl.get(java.util.Calendar.DAY_OF_MONTH), cl.get(java.util.Calendar.MONTH) + 1,
-            (cl.get(java.util.Calendar.YEAR) % 100))
+            cal.get(java.util.Calendar.DAY_OF_MONTH), cal.get(java.util.Calendar.MONTH) + 1,
+            (cal.get(java.util.Calendar.YEAR) % 100))
         val time = String.format(Locale.US, "%02d%02d%02d",
-            cl.get(java.util.Calendar.HOUR_OF_DAY), cl.get(java.util.Calendar.MINUTE),
-            cl.get(java.util.Calendar.SECOND))
+            cal.get(java.util.Calendar.HOUR_OF_DAY), cal.get(java.util.Calendar.MINUTE),
+            cal.get(java.util.Calendar.SECOND))
         val knots = pos.speedKmh / 1.852
         val sb = StringBuilder("\$MGV002,")
             .append(imei).append(',').append(imei).append(",S,")
@@ -151,13 +196,12 @@ object GpsGateProtocol {
     }
 
     // ------------------------------------------------------------------ GL200
-    /** Packet: +RESP:GTFRI,301201,<imei>,,0,0,1,acc,speed,heading,alt,lon,lat,yyMMddHHmmss,mcc,mnc,lac,cell,,batt,yyMMddHHmmss,rand$ */
-    fun buildGl200(imei: String, pos: FrcmdPosition): String {
-        val cl = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
+    /** Packet: +RESP:GTFRI,301201,<imei>,... (date/time from [cal]). */
+    fun buildGl200(imei: String, pos: FrcmdPosition, cal: java.util.Calendar): String {
         val utc = String.format(Locale.US, "%02d%02d%02d%02d%02d%02d",
-            (cl.get(java.util.Calendar.YEAR) % 100), cl.get(java.util.Calendar.MONTH) + 1,
-            cl.get(java.util.Calendar.DAY_OF_MONTH), cl.get(java.util.Calendar.HOUR_OF_DAY),
-            cl.get(java.util.Calendar.MINUTE), cl.get(java.util.Calendar.SECOND))
+            (cal.get(java.util.Calendar.YEAR) % 100), cal.get(java.util.Calendar.MONTH) + 1,
+            cal.get(java.util.Calendar.DAY_OF_MONTH), cal.get(java.util.Calendar.HOUR_OF_DAY),
+            cal.get(java.util.Calendar.MINUTE), cal.get(java.util.Calendar.SECOND))
         val rand = Integer.toHexString(ThreadLocalRandom.current().nextInt(65536))
         return "+RESP:GTFRI,301201,$imei,,0,0,1,0," +
             String.format(Locale.US, "%.2f", pos.speedKmh) + "," +
@@ -168,12 +212,20 @@ object GpsGateProtocol {
     }
 
     // ------------------------------------------------------------------ build
-    /** Build the outbound packet for the given protocol. */
-    fun buildPacket(proto: GpsGateProto, imei: String, pos: FrcmdPosition, unix: Long): ByteArray {
+    /**
+     * Build the outbound packet for the given protocol. The timestamp is taken
+     * from the $FRCMD date/time fields and re-interpreted per [mode]; when the
+     * packet has no usable date/time, "now" (UTC) is used as a fallback.
+     */
+    fun buildPacket(proto: GpsGateProto, imei: String, pos: FrcmdPosition, mode: GpsGateTimestampMode): ByteArray {
+        var cal = resolveTimestamp(pos, mode)
+        if (cal == null) {
+            cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
+        }
         val s: String = when (proto) {
-            GpsGateProto.RTT006 -> buildRtt006(imei, pos, unix)
-            GpsGateProto.MT60 -> buildMt60(imei, pos)
-            GpsGateProto.GL200 -> buildGl200(imei, pos)
+            GpsGateProto.RTT006 -> buildRtt006(imei, pos, cal)
+            GpsGateProto.MT60 -> buildMt60(imei, pos, cal)
+            GpsGateProto.GL200 -> buildGl200(imei, pos, cal)
         }
         return (s + "\r\n").toByteArray(Charsets.UTF_8)
     }

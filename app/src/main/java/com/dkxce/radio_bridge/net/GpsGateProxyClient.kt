@@ -218,8 +218,7 @@ class GpsGateProxyClient(
 
     private fun sendToServer(server: GpsGateServer, pos: FrcmdPosition, target: String) {
         val imei = GpsGateProtocol.resolveImei(server, pos.senderId)
-        val unix = System.currentTimeMillis() / 1000
-        val payload = GpsGateProtocol.buildPacket(server.proto, imei, pos, unix)
+        val payload = GpsGateProtocol.buildPacket(server.proto, imei, pos, cfg.timestampMode)
         val ok = try {
             val s = Socket()
             try {
