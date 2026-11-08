@@ -34,6 +34,7 @@ import com.dkxce.radio_bridge.core.Ax25
 import com.dkxce.radio_bridge.net.AgwTcpServer
 import com.dkxce.radio_bridge.net.AprsIsProxyClient
 import com.dkxce.radio_bridge.net.AprsIsTcpServer
+import com.dkxce.radio_bridge.net.GpsGateProxyClient
 import com.dkxce.radio_bridge.net.KissTcpServer
 import com.dkxce.radio_bridge.igate.IGateClient
 import java.util.concurrent.atomic.AtomicBoolean
@@ -52,6 +53,7 @@ class BridgeService : Service() {
     private var aprsServer: AprsIsTcpServer? = null
     private var igate: IGateClient? = null
     private var proxy: AprsIsProxyClient? = null
+    private var gpsGate: GpsGateProxyClient? = null
     private val running = AtomicBoolean(false)
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -70,6 +72,7 @@ class BridgeService : Service() {
         stopServers()
         stopIGate()
         stopProxy()
+        stopGpsGate()
         ble?.disconnect()
         ble = null
         super.onDestroy()
@@ -113,6 +116,9 @@ class BridgeService : Service() {
             ACTION_RESET_PROXY_STATS -> { proxy?.resetStats() }
             ACTION_CLEAR_PROXY_LOG -> { proxy?.clearPacketLog() }
             ACTION_CLEAR_CACHE -> { proxy?.clearCaches() }
+            ACTION_START_GPSGATE -> startGpsGate()
+            ACTION_STOP_GPSGATE -> stopGpsGate()
+            ACTION_RESET_GPSGATE_STATS -> { gpsGate?.resetStats() }
             ACTION_SEND_RADIO -> {
                 val data = intent.getByteArrayExtra(EXTRA_KISS)
                 if (data != null) sendToRadio(data)
@@ -345,6 +351,38 @@ class BridgeService : Service() {
         model.setProxyStats(p.stats())
     }
 
+    // ------------------------------------------------------------------ gpsgate
+    private fun startGpsGate() {
+        val cfg = model.loadGpsGateConfig().copy(enabled = true)
+        model.saveGpsGateConfig(cfg)
+        if (gpsGate == null) {
+            gpsGate = GpsGateProxyClient(
+                cfg = cfg,
+                onLog = { msg -> model.appendLog(msg) },
+            ).also { g ->
+                g.setOnStatsChanged { pushGpsGateStats() }
+            }
+        } else {
+            gpsGate?.updateConfig(cfg)
+        }
+        gpsGate?.start()
+        model.setGpsGateRunning(true)
+        model.appendLog("[GPSGate] started")
+    }
+
+    private fun stopGpsGate() {
+        gpsGate?.stop()
+        gpsGate = null
+        model.setGpsGateRunning(false)
+        model.setGpsGateStats(com.dkxce.radio_bridge.net.GpsGateStats())
+        model.appendLog("[GPSGate] stopped")
+    }
+
+    private fun pushGpsGateStats() {
+        val g = gpsGate ?: return
+        model.setGpsGateStats(g.statsSnapshot())
+    }
+
     // ------------------------------------------------------------------ notification
     private fun createChannel() {
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
@@ -382,6 +420,9 @@ class BridgeService : Service() {
         const val ACTION_RESET_PROXY_STATS = "com.dkxce.radio_bridge.ACTION_RESET_PROXY_STATS"
         const val ACTION_CLEAR_PROXY_LOG = "com.dkxce.radio_bridge.ACTION_CLEAR_PROXY_LOG"
         const val ACTION_CLEAR_CACHE = "com.dkxce.radio_bridge.ACTION_CLEAR_CACHE"
+        const val ACTION_START_GPSGATE = "com.dkxce.radio_bridge.ACTION_START_GPSGATE"
+        const val ACTION_STOP_GPSGATE = "com.dkxce.radio_bridge.ACTION_STOP_GPSGATE"
+        const val ACTION_RESET_GPSGATE_STATS = "com.dkxce.radio_bridge.ACTION_RESET_GPSGATE_STATS"
         const val ACTION_SEND_RADIO = "com.dkxce.radio_bridge.ACTION_SEND_RADIO"
         const val EXTRA_ADDR = "addr"
         const val EXTRA_KISS = "kiss"

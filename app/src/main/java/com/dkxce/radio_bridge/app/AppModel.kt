@@ -18,6 +18,11 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.documentfile.provider.DocumentFile
 import com.dkxce.radio_bridge.igate.IGateConfig
+import com.dkxce.radio_bridge.net.GpsGateProxyConfig
+import com.dkxce.radio_bridge.net.GpsGateServer
+import com.dkxce.radio_bridge.net.GpsGateStats
+import com.dkxce.radio_bridge.net.GpsGateProto
+import com.dkxce.radio_bridge.net.GpsGateImeiSource
 import com.dkxce.radio_bridge.net.ProxyConfig
 import com.dkxce.radio_bridge.net.ProxySource
 import com.dkxce.radio_bridge.net.ProxyStats
@@ -57,6 +62,9 @@ data class UiState(
     val proxyConfig: ProxyConfig = ProxyConfig(),
     val proxyRunning: Boolean = false,
     val proxyStats: ProxyStats = ProxyStats(),
+    val gpsGateConfig: GpsGateProxyConfig = GpsGateProxyConfig(),
+    val gpsGateRunning: Boolean = false,
+    val gpsGateStats: GpsGateStats = GpsGateStats(),
     val log: List<String> = emptyList(),
 )
 
@@ -224,6 +232,58 @@ class AppModel private constructor(context: Context) {
     fun setProxyStats(stats: ProxyStats) { _ui.value = _ui.value.copy(proxyStats = stats) }
     fun resetProxyStats() { _ui.value = _ui.value.copy(proxyStats = ProxyStats()) }
 
+    // --- GPSGate proxy settings + state ---
+
+    fun saveGpsGateConfig(cfg: GpsGateProxyConfig) {
+        prefs.edit()
+            .putBoolean("gpsgate_enabled", cfg.enabled)
+            .putInt("gpsgate_listen_port", cfg.listenPort)
+            .putInt("gpsgate_server_count", cfg.servers.size)
+            .apply()
+        cfg.servers.forEachIndexed { i, s ->
+            prefs.edit()
+                .putBoolean("gpsgate_srv_${i}_enabled", s.enabled)
+                .putString("gpsgate_srv_${i}_host", s.host)
+                .putInt("gpsgate_srv_${i}_port", s.port)
+                .putString("gpsgate_srv_${i}_proto", s.proto.name)
+                .putString("gpsgate_srv_${i}_imei_source", s.imeiSource.name)
+                .putString("gpsgate_srv_${i}_imei_explicit", s.imeiExplicit)
+                .putString("gpsgate_srv_${i}_imei_text", s.imeiText)
+                .apply()
+        }
+        _ui.value = _ui.value.copy(gpsGateConfig = cfg)
+    }
+
+    fun loadGpsGateConfig(): GpsGateProxyConfig {
+        val count = prefs.getInt("gpsgate_server_count", 1)
+        val servers = (0 until count).map { i ->
+            GpsGateServer(
+                enabled = prefs.getBoolean("gpsgate_srv_${i}_enabled", i == 0),
+                host = prefs.getString("gpsgate_srv_${i}_host", "livegpstracks.ru")!!,
+                port = prefs.getInt("gpsgate_srv_${i}_port", 3349),
+                proto = runCatching {
+                    GpsGateProto.valueOf(prefs.getString("gpsgate_srv_${i}_proto", GpsGateProto.RTT006.name)!!)
+                }.getOrDefault(GpsGateProto.RTT006),
+                imeiSource = runCatching {
+                    GpsGateImeiSource.valueOf(prefs.getString("gpsgate_srv_${i}_imei_source", GpsGateImeiSource.CRC_FRCMD.name)!!)
+                }.getOrDefault(GpsGateImeiSource.CRC_FRCMD),
+                imeiExplicit = prefs.getString("gpsgate_srv_${i}_imei_explicit", "")!!,
+                imeiText = prefs.getString("gpsgate_srv_${i}_imei_text", "")!!,
+            )
+        }
+        val cfg = GpsGateProxyConfig(
+            enabled = prefs.getBoolean("gpsgate_enabled", false),
+            listenPort = prefs.getInt("gpsgate_listen_port", 12014),
+            servers = servers,
+        )
+        _ui.value = _ui.value.copy(gpsGateConfig = cfg)
+        return cfg
+    }
+
+    fun setGpsGateRunning(running: Boolean) { _ui.value = _ui.value.copy(gpsGateRunning = running) }
+    fun setGpsGateStats(stats: GpsGateStats) { _ui.value = _ui.value.copy(gpsGateStats = stats) }
+    fun resetGpsGateStats() { _ui.value = _ui.value.copy(gpsGateStats = GpsGateStats()) }
+
     // --- UI state mutators (called from ViewModel/service) ---
 
     fun setScanning(v: Boolean) { _ui.value = _ui.value.copy(scanning = v) }
@@ -284,6 +344,7 @@ class AppModel private constructor(context: Context) {
         o.put("bridge", bridge)
         o.put("igate", igateToJson(_ui.value.igateConfig))
         o.put("proxy", proxyToJson(_ui.value.proxyConfig))
+        o.put("gpsGate", gpsGateToJson(_ui.value.gpsGateConfig))
         file.writeText(o.toString(2))
     }
 
@@ -303,6 +364,9 @@ class AppModel private constructor(context: Context) {
         // proxy
         val p = o.optJSONObject("proxy")
         if (p != null) saveProxyConfig(proxyFromJson(p, _ui.value.proxyConfig))
+        // gpsGate
+        val g = o.optJSONObject("gpsGate")
+        if (g != null) saveGpsGateConfig(gpsGateFromJson(g, _ui.value.gpsGateConfig))
     }
 
     /** Build the settings JSON string (used by both file and SAF exports). */
@@ -445,4 +509,48 @@ class AppModel private constructor(context: Context) {
         radioToAisCache = j.optBoolean("radioToAisCache", d.radioToAisCache),
         internetToAisCache = j.optBoolean("internetToAisCache", d.internetToAisCache),
     )
+
+    private fun gpsGateToJson(c: GpsGateProxyConfig): org.json.JSONObject {
+        val servers = org.json.JSONArray()
+        c.servers.forEach { s ->
+            servers.put(org.json.JSONObject()
+                .put("enabled", s.enabled)
+                .put("host", s.host)
+                .put("port", s.port)
+                .put("proto", s.proto.name)
+                .put("imeiSource", s.imeiSource.name)
+                .put("imeiExplicit", s.imeiExplicit)
+                .put("imeiText", s.imeiText))
+        }
+        return org.json.JSONObject()
+            .put("enabled", c.enabled)
+            .put("listenPort", c.listenPort)
+            .put("servers", servers)
+    }
+
+    private fun gpsGateFromJson(j: org.json.JSONObject, d: GpsGateProxyConfig): GpsGateProxyConfig {
+        val arr = j.optJSONArray("servers")
+        val servers = if (arr != null && arr.length() > 0) {
+            (0 until arr.length()).map { i ->
+                val s = arr.getJSONObject(i)
+                GpsGateServer(
+                    enabled = s.optBoolean("enabled", false),
+                    host = s.optString("host", "livegpstracks.ru"),
+                    port = s.optInt("port", 3349),
+                    proto = runCatching { GpsGateProto.valueOf(s.optString("proto", GpsGateProto.RTT006.name)) }
+                        .getOrDefault(GpsGateProto.RTT006),
+                    imeiSource = runCatching {
+                        GpsGateImeiSource.valueOf(s.optString("imeiSource", GpsGateImeiSource.CRC_FRCMD.name))
+                    }.getOrDefault(GpsGateImeiSource.CRC_FRCMD),
+                    imeiExplicit = s.optString("imeiExplicit", ""),
+                    imeiText = s.optString("imeiText", ""),
+                )
+            }
+        } else d.servers
+        return GpsGateProxyConfig(
+            enabled = j.optBoolean("enabled", d.enabled),
+            listenPort = j.optInt("listenPort", d.listenPort),
+            servers = servers,
+        )
+    }
 }

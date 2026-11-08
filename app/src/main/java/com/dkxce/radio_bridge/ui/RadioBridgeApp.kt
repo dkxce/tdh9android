@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import com.dkxce.radio_bridge.app.BridgeConfig
 import com.dkxce.radio_bridge.app.UiState
 import com.dkxce.radio_bridge.igate.IGateConfig
+import com.dkxce.radio_bridge.net.GpsGateProxyConfig
 import com.dkxce.radio_bridge.net.ProxyConfig
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,6 +45,10 @@ fun RadioBridgeApp(
     onResetProxyStats: () -> Unit,
     onClearProxyLog: () -> Unit,
     onClearCache: () -> Unit,
+    onStartGpsGate: () -> Unit,
+    onStopGpsGate: () -> Unit,
+    onSaveGpsGateConfig: (GpsGateProxyConfig) -> Unit,
+    onResetGpsGateStats: () -> Unit,
     onClearLog: () -> Unit,
     onExitApp: () -> Unit,
     onExportSettings: () -> Unit,
@@ -69,6 +74,8 @@ fun RadioBridgeApp(
                 NavigationBarItem(selected = tab == 4, onClick = { tab = 4 },
                     icon = { Icon(Icons.Filled.Description, null) }, label = { Text("Log") })
                 NavigationBarItem(selected = tab == 5, onClick = { tab = 5 },
+                    icon = { Icon(Icons.Filled.LocationOn, null) }, label = { Text("GPSGate") })
+                NavigationBarItem(selected = tab == 6, onClick = { tab = 6 },
                     icon = { Icon(Icons.Filled.Info, null) }, label = { Text("About") })
             }
         }
@@ -80,7 +87,8 @@ fun RadioBridgeApp(
                 2 -> IGateTab(state, onStartIGate, onStopIGate, onSaveIGateConfig)
                 3 -> ProxyTab(state, onStartProxy, onStopProxy, onSaveProxyConfig, onResetProxyStats, onClearProxyLog, onClearCache)
                 4 -> LogTab(state, onClearLog)
-                5 -> AboutTab(onExitApp, onExportSettings, onImportSettings)
+                5 -> GpsGateTab(state, onStartGpsGate, onStopGpsGate, onSaveGpsGateConfig, onResetGpsGateStats)
+                6 -> AboutTab(onExitApp, onExportSettings, onImportSettings)
             }
         }
     }

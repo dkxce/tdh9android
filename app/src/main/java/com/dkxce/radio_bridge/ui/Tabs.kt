@@ -36,8 +36,13 @@ import com.dkxce.radio_bridge.app.BridgeConfig
 import com.dkxce.radio_bridge.app.ServerMode
 import com.dkxce.radio_bridge.app.UiState
 import com.dkxce.radio_bridge.igate.IGateConfig
+import com.dkxce.radio_bridge.net.GpsGateImeiSource
+import com.dkxce.radio_bridge.net.GpsGateProto
+import com.dkxce.radio_bridge.net.GpsGateProxyConfig
+import com.dkxce.radio_bridge.net.GpsGateServer
 import com.dkxce.radio_bridge.net.ProxyConfig
 import com.dkxce.radio_bridge.net.ProxySource
+import androidx.compose.runtime.toMutableStateList
 
 @Composable
 fun DeviceTab(
@@ -636,6 +641,143 @@ fun IGateTab(
                 Text("Start IGate")
             }
             Text("IGate stopped", color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium)
+        }
+    }
+}
+
+/** GPSGate proxy tab: local Franson GPSGate HTTP server + remote forwarders. */
+@Composable
+fun GpsGateTab(
+    state: UiState,
+    onStartGpsGate: () -> Unit,
+    onStopGpsGate: () -> Unit,
+    onSaveGpsGateConfig: (GpsGateProxyConfig) -> Unit,
+    onResetGpsGateStats: () -> Unit,
+) {
+    val gcfg = state.gpsGateConfig
+    var listenPort by remember(gcfg.listenPort) { mutableStateOf(gcfg.listenPort.toString()) }
+    val servers = remember(gcfg.servers) { gcfg.servers.toMutableStateList() }
+
+    fun collectCfg(): GpsGateProxyConfig {
+        return GpsGateProxyConfig(
+            enabled = true,
+            listenPort = listenPort.toIntOrNull() ?: 12014,
+            servers = servers.toList(),
+        )
+    }
+
+    // Auto-save on field change
+    LaunchedEffect(listenPort, servers.toList()) {
+        onSaveGpsGateConfig(collectCfg())
+    }
+
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text("GPSGate Proxy (Franson GPSGate)", style = MaterialTheme.typography.titleMedium)
+        Text("Local HTTP server for GPSGate trackers; forwards positions as rtt006 / MT60 / GL200.",
+            style = MaterialTheme.typography.bodySmall)
+
+        OutlinedTextField(value = listenPort, onValueChange = { listenPort = it },
+            label = { Text("Local HTTP port") }, singleLine = true,
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
+
+        // servers
+        Text("Target servers:", style = MaterialTheme.typography.labelLarge)
+        servers.forEachIndexed { idx, s ->
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Checkbox(checked = s.enabled,
+                            onCheckedChange = { servers[idx] = s.copy(enabled = it) })
+                        Text("Server ${idx + 1}", modifier = Modifier.weight(1f))
+                        OutlinedButton(onClick = { servers.removeAt(idx) }) { Text("Remove") }
+                    }
+                    OutlinedTextField(value = s.host, onValueChange = { servers[idx] = s.copy(host = it) },
+                        label = { Text("Host") }, singleLine = true)
+                    OutlinedTextField(value = s.port.toString(),
+                        onValueChange = { servers[idx] = s.copy(port = it.toIntOrNull() ?: 0) },
+                        label = { Text("Port") }, singleLine = true,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Number))
+                    // protocol
+                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Text("Protocol: ", style = MaterialTheme.typography.bodyMedium)
+                        var protoExpanded by remember { mutableStateOf(false) }
+                        Box {
+                            OutlinedButton(onClick = { protoExpanded = true }) { Text(s.proto.name) }
+                            DropdownMenu(expanded = protoExpanded, onDismissRequest = { protoExpanded = false }) {
+                                GpsGateProto.entries.forEach { p ->
+                                    DropdownMenuItem(text = { Text(p.name) },
+                                        onClick = { servers[idx] = s.copy(proto = p); protoExpanded = false })
+                                }
+                            }
+                        }
+                    }
+                    // imei source
+                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Text("IMEI: ", style = MaterialTheme.typography.bodyMedium)
+                        var srcExpanded by remember { mutableStateOf(false) }
+                        Box {
+                            OutlinedButton(onClick = { srcExpanded = true }) { Text(s.imeiSource.name) }
+                            DropdownMenu(expanded = srcExpanded, onDismissRequest = { srcExpanded = false }) {
+                                GpsGateImeiSource.entries.forEach { src ->
+                                    DropdownMenuItem(text = { Text(src.name) },
+                                        onClick = { servers[idx] = s.copy(imeiSource = src); srcExpanded = false })
+                                }
+                            }
+                        }
+                    }
+                    when (s.imeiSource) {
+                        GpsGateImeiSource.EXPLICIT ->
+                            OutlinedTextField(value = s.imeiExplicit,
+                                onValueChange = { servers[idx] = s.copy(imeiExplicit = it) },
+                                label = { Text("IMEI (16 hex lowercase)") }, singleLine = true)
+                        GpsGateImeiSource.CRC_TEXT ->
+                            OutlinedTextField(value = s.imeiText,
+                                onValueChange = { servers[idx] = s.copy(imeiText = it) },
+                                label = { Text("IMEI text (CRC64 -> IMEI)") }, singleLine = true)
+                        GpsGateImeiSource.CRC_FRCMD ->
+                            Text("IMEI = CRC64($FRCMD sender id)", style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        }
+        Button(onClick = {
+            servers.add(GpsGateServer(enabled = true, host = "livegpstracks.ru", port = 3349,
+                proto = GpsGateProto.RTT006, imeiSource = GpsGateImeiSource.CRC_FRCMD))
+        }) { Text("Add server") }
+
+        // control + stats
+        if (state.gpsGateRunning) {
+            Button(onClick = onStopGpsGate,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Filled.Stop, null); Spacer(Modifier.width(6.dp)); Text("Stop GPSGate Proxy")
+            }
+            val s = state.gpsGateStats
+            Text("Running on :${gcfg.listenPort}", color = MaterialTheme.colorScheme.primary)
+            Text("RX: ${s.rxPackets}   TX: ${s.txPackets}   Failed: ${s.failedPackets}")
+            TextButton(onClick = onResetGpsGateStats) { Text("Reset stats") }
+            if (s.packetsLog.isNotEmpty()) {
+                Text("Last packets:", style = MaterialTheme.typography.labelLarge)
+                s.packetsLog.take(20).forEach { p ->
+                    Text(p, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        } else {
+            Button(onClick = {
+                onSaveGpsGateConfig(collectCfg())
+                onStartGpsGate()
+            }, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Filled.PlayArrow, null); Spacer(Modifier.width(6.dp)); Text("Start GPSGate Proxy")
+            }
+            Text("GPSGate proxy stopped", color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium)
         }
     }

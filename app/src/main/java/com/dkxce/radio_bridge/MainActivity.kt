@@ -131,6 +131,16 @@ class MainActivity : ComponentActivity() {
                     onClearCache = {
                         startService(BridgeService.ACTION_CLEAR_CACHE)
                     },
+                    onStartGpsGate = {
+                        startService(BridgeService.ACTION_START_GPSGATE)
+                    },
+                    onStopGpsGate = {
+                        startService(BridgeService.ACTION_STOP_GPSGATE)
+                    },
+                    onSaveGpsGateConfig = viewModel::saveGpsGateConfig,
+                    onResetGpsGateStats = {
+                        startService(BridgeService.ACTION_RESET_GPSGATE_STATS)
+                    },
                     onSaveConfig = viewModel::saveConfig,
                     onClearLog = viewModel::clearLog,
                     onExitApp = { finishAffinity(); exitProcess(0) },

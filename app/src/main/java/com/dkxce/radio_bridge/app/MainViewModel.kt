@@ -15,6 +15,8 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.dkxce.radio_bridge.igate.IGateConfig
+import com.dkxce.radio_bridge.net.GpsGateProxyConfig
+import com.dkxce.radio_bridge.net.GpsGateStats
 import com.dkxce.radio_bridge.net.ProxyConfig
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -35,6 +37,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         model.loadIGateConfig()
         // Load persisted Proxy settings into the UI state.
         model.loadProxyConfig()
+        // Load persisted GPSGate proxy settings into the UI state.
+        model.loadGpsGateConfig()
     }
 
     val ui: StateFlow<UiState> = model.ui
@@ -42,11 +46,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun saveConfig(cfg: BridgeConfig) = model.saveConfig(cfg)
     fun saveIGateConfig(cfg: IGateConfig) = model.saveIGateConfig(cfg)
     fun saveProxyConfig(cfg: ProxyConfig) = model.saveProxyConfig(cfg)
+    fun saveGpsGateConfig(cfg: GpsGateProxyConfig) = model.saveGpsGateConfig(cfg)
     fun setScanning(v: Boolean) = model.setScanning(v)
     fun appendLog(text: String) = model.appendLog(text)
     fun clearLog() = model.clearLog()
     fun loadConfig() = model.loadConfig()
     fun resetProxyStats() = model.resetProxyStats()
+    fun resetGpsGateStats() = model.resetGpsGateStats()
+    fun setGpsGateRunning(v: Boolean) = model.setGpsGateRunning(v)
+    fun setGpsGateStats(s: GpsGateStats) = model.setGpsGateStats(s)
 
     fun exportSettings(path: String) = model.exportSettings(java.io.File(path))
     fun importSettings(path: String) = model.importSettings(java.io.File(path))
