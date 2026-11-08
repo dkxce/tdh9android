@@ -1,0 +1,30 @@
+@startuml radio_signal_flow
+title Блок-схема обработки сигнала с рации
+start
+
+:BleBridge: BLE notify\n(raw KISS frame с рации);
+:Kiss.parse\ndecapsulate KISS;
+:Ax25.toAprsText\n(AX.25 UI-frame -> APRS text);
+note right
+  [RX] текст пакета пишется в лог
+end note
+if (Пакет валиден?) then (да)
+  :BridgeService.handleRadioRx\ngотовит текст;
+  fork
+    :IGate.radioRx\nradio -> net (+ qAR);
+  fork again
+    :Proxy.radioRx\nradio -> clients / internet / AIS;
+  fork again
+    if (Есть локальные TCP-клиенты?) then (да)
+      :broadcastRadio(raw)\n-> KISS/AGW/APRS-IS серверы;
+    else (нет)
+      :лог "[RX] no TCP clients";
+    endif
+  end fork
+  :конец обработки RX;
+else (нет)
+  :игнор;
+endif
+stop
+
+@enduml

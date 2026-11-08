@@ -1,0 +1,35 @@
+@startuml igate_principle
+title IGate: Принципиальная схема работы
+left to right direction
+
+package "Рация TD-H9 (BLE KISS TNC)" {
+  [Radio APRS feed]
+  [Radio TX]
+}
+
+package "TDH9RadioBridge (IGate)" {
+  [IGateClient\nradio -> net (rule b)]
+  [IGateClient\nnet -> radio (rule a)]
+  [Filter: shouldGateToRadio]
+}
+
+package "APRS-IS Internet" {
+  [APRS-IS Server\nrotate.aprs2.net:14580]
+}
+
+[Radio APRS feed] --> [IGateClient\nradio -> net (rule b)] : "APRS frame"
+[IGateClient\nradio -> net (rule b)] --> [APRS-IS Server] : "+ qAR,<IGATE_NAME>"
+[APRS-IS Server] --> [IGateClient\nnet -> radio (rule a)] : "packet"
+[IGateClient\nnet -> radio (rule a)] --> [Filter: shouldGateToRadio] : "to radio?"
+[Filter: shouldGateToRadio] --> [Radio TX] : "AX.25 UI-frame"
+[Filter: shouldGateToRadio] --> X : "skip (no match / qAR / qAO / no TCPIP)"
+
+note right of [Filter: shouldGateToRadio]
+  Пропускает в рацию, если:
+  * путь содержит <IGATE_NAME> (если задан)
+  * есть TCPIP (если checkTcpip)
+  * нет qAR (если checkNoQar)
+  * нет qAO (если checkNoQao)
+end note
+
+@enduml

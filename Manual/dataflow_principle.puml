@@ -1,0 +1,30 @@
+@startuml dataflow_principle
+title Потоки данных: Принципиальная схема
+
+rectangle "Радио (BLE KISS TNC)" as radio
+rectangle "TCP-серверы (KISS/AGW/APRS-IS)" as servers
+rectangle "IGate (APRS-IS client)" as igate
+rectangle "Proxy (APRS-IS bridge)" as proxy
+rectangle "Интернет APRS-IS" as net
+rectangle "AIS-клиенты (OruxMaps и др.)" as ais
+rectangle "Апп-клиенты (YAAC и др.)" as appcli
+
+radio --> servers : "RX: broadcastRadio(raw)"
+servers --> radio : "TX: client frame -> radio"
+radio --> igate : "RX: radioRx(text)"
+igate --> net : "radio -> net (+qAR)"
+net --> igate : "net -> radio (фильтр)"
+radio --> proxy : "RX: radioRx(text)"
+net --> proxy : "RX: internet packets"
+proxy --> net : "TX: packets (clientsToInternet)"
+proxy --> ais : "позиции APRS -> !AIVDM"
+appcli --> servers : "подключение/login"
+servers --> appcli : "broadcast"
+
+note bottom of proxy
+  Proxy работает параллельно с IGate и серверами.
+  Каждый компонент можно запускать/останавливать
+  отдельно со своей вкладки.
+end note
+
+@enduml

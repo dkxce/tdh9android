@@ -1,0 +1,29 @@
+@startuml proxy_clients_flow
+title Блок-схема обработки APRS данных с Proxy (клиенты)
+start
+
+:Локальный клиент подключился\n(clientLoop, accept);
+:sendLine "connection accepted";
+:sendClientCache(out)\n-- кэш (radio/internet -> clients cache),\nесли включён;
+while (Пакет от клиента?) is (readLine)
+  if (login user/pass/filter?) then (да)
+    :parseLogin -> callsign/pass/filter\nverified = passcode match;
+    :лог "[Proxy] client login ...";
+    :logresp клиенту;
+    :ensureUpstream (переоценка источника логина);
+  else (нет)
+    :rxClients++; лог "RX<-client";
+    if (clientsToInternet?) then (да)
+      :sendToInternet(text)\n(буфер при разрыве);
+    else (нет)
+    endif
+    if (clientsToRadio?) then (да)
+      :onTxToRadio -> AX.25 -> рация\ntxRadio++;
+    else (нет)
+    endif
+  endif
+endwhile (клиент отключился)
+:removeClient\nensureUpstream (переоценка);
+stop
+
+@enduml

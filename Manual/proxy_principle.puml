@@ -1,0 +1,51 @@
+@startuml proxy_principle
+title Proxy: Принципиальная схема работы APRS-IS Proxy
+left to right direction
+
+package "Рация TD-H9 (BLE)" {
+  [Radio RX\nиз эфира]
+  [Radio TX\nв эфир]
+}
+
+package "TDH9RadioBridge (AprsIsProxyClient)" {
+  [Local APRS-IS server\n:listenPort]
+  [AIS feed server\n:aisPort]
+  [Upstream connection\nserver:serverPort]
+  [Callbacks & caches]
+}
+
+package "Внешнее" {
+  [APRS-IS Internet Server]
+  [Local APRS-IS clients\nYAAC / APRSDroid]
+  [AIS clients\nOruxMaps / OpenCPN]
+}
+
+[Radio RX] --> [Callbacks & caches] : radioRx(text)
+[Callbacks & caches] --> [Local APRS-IS server] : radio -> clients (qAR)
+[Callbacks & caches] --> [Upstream connection] : radio -> internet (qAR)
+[Callbacks & caches] --> [AIS feed server] : radio -> AIS (позиции)
+
+[Upstream connection] --> [APRS-IS Internet Server] : user/pass/filter
+[APRS-IS Internet Server] --> [Upstream connection] : пакеты
+[Upstream connection] --> [Local APRS-IS server] : internet -> clients
+[Upstream connection] --> [Callbacks & caches] : internet -> radio
+[Upstream connection] --> [AIS feed server] : internet -> AIS (позиции)
+
+[Local APRS-IS clients] --> [Local APRS-IS server] : login + пакеты
+[Local APRS-IS server] --> [Local APRS-IS clients] : broadcast
+[Local APRS-IS server] --> [Callbacks & caches] : clients -> internet (clientsToInternet)
+[Local APRS-IS server] --> [Radio TX] : clients -> radio (clientsToRadio)
+
+[AIS clients] --> [AIS feed server] : "read-only (TCP)"
+[AIS feed server] --> [AIS clients] : "!AIVDM ... (тип 1-3 + 5)"
+
+note bottom of [Callbacks & caches]
+  Направления настраиваются чекбоксами Forwarding:
+  radio -> internet, radio -> clients, radio -> AIS (и cache)
+  internet -> radio, internet -> clients, internet -> AIS (и cache)
+  clients -> radio, clients -> internet
+  Upstream активен, если: есть clients, radioToInternet,
+  internetToRadio или internetToAis.
+end note
+
+@enduml

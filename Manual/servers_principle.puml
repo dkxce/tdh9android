@@ -1,0 +1,38 @@
+@startuml servers_principle
+title Серверы: Принципиальная схема работы локальных TCP-серверов
+left to right direction
+
+package "TDH9RadioBridge (BridgeService)" {
+  [KissTcpServer\nBinary KISS :port]
+  [AgwTcpServer\nAGWPE :port]
+  [AprsIsTcpServer\nAPRS-IS :port]
+  [BleBridge\nрадио KISS]
+}
+
+package "Клиенты (внешние приложения)" {
+  [YAAC / UI-View32]
+  [OruxMaps / APRSDroid]
+  [Другие TCP-клиенты]
+}
+
+[KissTcpServer] --> [BleBridge] : "первичный AX.25 payload"
+[AgwTcpServer] --> [BleBridge] : "payload"
+[AprsIsTcpServer] --> [BleBridge] : "APRS text"
+
+[BleBridge] --> [KissTcpServer] : "broadcastRadio(raw)"
+[BleBridge] --> [AgwTcpServer] : "broadcastRadio(raw)"
+[BleBridge] --> [AprsIsTcpServer] : "broadcastRadio(raw)"
+
+[YAAC / UI-View32] --> [KissTcpServer]
+[OruxMaps / APRSDroid] --> [AprsIsTcpServer]
+[Другие TCP-клиенты] --> [AgwTcpServer]
+
+note top of [KissTcpServer]
+  Режимы (ServerTab -> Mode):
+  * KISS - бинарный KISS-фрейминг
+  * AGW - AGWPE (классика)
+  * APRS-IS - совместимый APRS-IS
+  Порт настраивается (ServerTab -> Port).
+end note
+
+@enduml

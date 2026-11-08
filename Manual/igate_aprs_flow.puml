@@ -1,0 +1,25 @@
+@startuml igate_aprs_flow
+title Блок-схема обработки APRS данных с IGate (net -> radio)
+start
+
+:IGateClient получает строку с APRS-IS\n(processServerLine);
+if (Строка -- комментарий / user / ping?) then (да)
+  stop
+endif
+:Parsing пути пакета\n(src>dst,path1,path2);
+if (shouldGateToRadio?) then (да)
+  if (igateName задан и нет в пути?) then (skip)
+  elseif (checkTcpip и нет TCPIP?) then (skip)
+  elseif (checkNoQar и есть qAR?) then (skip)
+  elseif (checkNoQao и есть qAO?) then (skip)
+  else (gate)
+    :лог "[IGate net -> radio] ...";
+    :onRxToRadio -> Ax25.encodeText\n-> KISS -> BLE TX;
+    stop
+  endif
+else (нет)
+  :лог "[IGate net --skip-> radio] ...";
+endif
+stop
+
+@enduml

@@ -1,0 +1,52 @@
+@startuml architecture_principle
+title Архитектура: Принципиальная схема приложения
+
+package "Android OS" {
+  [MainActivity\nCompose UI (вкладки)]
+  [BridgeService\nForeground Service (connectedDevice)]
+  [BLE (BluetoothAdapter)]
+  [TCP/IP стёк]
+}
+
+package "App Model & ViewModel" {
+  [MainViewModel]
+  [AppModel (SharedPreferences)\n+ StateFlow UiState]
+  [BleBridge\nBLE <-> KISS]
+  [Kiss.kt / Ax25.kt\nкодирование]
+}
+
+package "Сетевые компоненты" {
+  [KissTcpServer]
+  [AgwTcpServer]
+  [AprsIsTcpServer]
+  [IGateClient]
+  [AprsIsProxyClient]
+  [AisCodec\nAPRS -> AIS]
+}
+
+[MainActivity] --> [MainViewModel]
+[MainViewModel] --> [AppModel]
+[BridgeService] --> [AppModel]
+[BridgeService] --> [BleBridge]
+[BleBridge] --> [Kiss.kt / Ax25.kt]
+[BleBridge] --> "BLE: адрес рации"
+[BridgeService] --> [KissTcpServer]
+[BridgeService] --> [AgwTcpServer]
+[BridgeService] --> [AprsIsTcpServer]
+[BridgeService] --> [IGateClient]
+[BridgeService] --> [AprsIsProxyClient]
+[AprsIsProxyClient] --> [AisCodec]
+
+[TCP/IP стёк] --> [KissTcpServer]
+[TCP/IP стёк] --> [AgwTcpServer]
+[TCP/IP стёк] --> [AprsIsTcpServer]
+[TCP/IP стёк] --> [IGateClient]
+[TCP/IP стёк] --> [AprsIsProxyClient]
+
+note bottom of [BridgeService]
+  Foreground service держит BLE + TCP-серверы
+  работающими при выключенном экране.
+  UI наблюдает AppModel через StateFlow.
+end note
+
+@enduml

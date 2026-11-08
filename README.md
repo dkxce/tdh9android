@@ -1,6 +1,7 @@
 # TDH9RadioBridge · TNC через BLE на Android
 
 [RU](README.md) | [EN](README.en.md) | [Releases](https://github.com/dkxce/tdh9android/releases)     
+[Инструкция](HOWTO.md) | [Manual](HOWTO.en.md) | [Releases](https://github.com/dkxce/tdh9android/releases)     
 
 Мост между рацией **TIDRadio TD-H9** (BLE GATT сервис Odmaster `af00`) и сетью
 **TCP/IP** с тремя протоколами. Рация выступает как аппаратный KISS-TNC: телефон

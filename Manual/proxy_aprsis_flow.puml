@@ -1,0 +1,28 @@
+@startuml proxy_aprsis_flow
+title Блок-схема обработки APRS данных с Proxy (APRS-IS / internet)
+start
+
+:Пакет получен из upstream\n(processUpstreamLine);
+if (Строка -- комментарий / user / logresp / ping?) then (да)
+  stop
+endif
+:rxInternet++\nлог "RX<-internet";
+if (internetToClients?) then (да)
+  :broadcastToClients(text)\nтрансляция локальным клиентам;
+else (нет)
+endif
+if (internetToClientsCache?) then (да)
+  :cacheClientPacket(text)\nкэш для переподключившихся клиентов;
+else (нет)
+endif
+if (internetToRadio?) then (да)
+  :onTxToRadio -> AX.25 -> рация\ntxRadio++;
+else (нет)
+endif
+if (internetToAis?) then (да)
+  :AisCodec.parseAprsPosition -> feedAisSource\n(type 1-3 + 5, если internetToAisCache - в кэш AIS);
+else (нет)
+endif
+stop
+
+@enduml
