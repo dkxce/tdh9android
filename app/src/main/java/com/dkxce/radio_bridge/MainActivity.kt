@@ -2,7 +2,7 @@
  ==============================================================================
   Main activity: permissions, ViewModel, BridgeService control, UI
   Author:  dkxce (c)  https://github.com/dkxce/Tidradio-TD-H9
-  Version: v1.1.0
+  Version: v1.3.0
 
   English:  App entry point. Requests Bluetooth/location/notification
             permissions, starts the foreground BridgeService and hosts the
@@ -141,6 +141,7 @@ class MainActivity : ComponentActivity() {
                     onResetGpsGateStats = {
                         startService(BridgeService.ACTION_RESET_GPSGATE_STATS)
                     },
+                    onTabVisibilityChange = viewModel::saveTabVisibility,
                     onSaveConfig = viewModel::saveConfig,
                     onClearLog = viewModel::clearLog,
                     onExitApp = { finishAffinity(); exitProcess(0) },

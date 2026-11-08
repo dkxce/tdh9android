@@ -2,7 +2,7 @@
  ==============================================================================
   App settings + live UI state (SharedPreferences-backed)
   Author:  dkxce (c)  https://github.com/dkxce/Tidradio-TD-H9
-  Version: v1.1.0
+  Version: v1.3.0
 
   English:  Process-wide singleton holding the app configuration (server mode,
             port, device history) and the UI state (devices, server status,
@@ -65,6 +65,11 @@ data class UiState(
     val gpsGateConfig: GpsGateProxyConfig = GpsGateProxyConfig(),
     val gpsGateRunning: Boolean = false,
     val gpsGateStats: GpsGateStats = GpsGateStats(),
+    // tab visibility toggles (About -> Enable ... Mode)
+    val showServerTab: Boolean = true,
+    val showIGateTab: Boolean = true,
+    val showProxyTab: Boolean = false,
+    val showGpsGateTab: Boolean = false,
     val log: List<String> = emptyList(),
 )
 
@@ -103,6 +108,7 @@ class AppModel private constructor(context: Context) {
 
     init {
         isConfigured = true
+        loadTabVisibility()
     }
 
     fun saveConfig(cfg: BridgeConfig) {
@@ -284,6 +290,32 @@ class AppModel private constructor(context: Context) {
     fun setGpsGateStats(stats: GpsGateStats) { _ui.value = _ui.value.copy(gpsGateStats = stats) }
     fun resetGpsGateStats() { _ui.value = _ui.value.copy(gpsGateStats = GpsGateStats()) }
 
+    // --- tab visibility toggles (About -> Enable ... Mode) ---
+
+    fun saveTabVisibility(showServer: Boolean, showIGate: Boolean, showProxy: Boolean, showGpsGate: Boolean) {
+        prefs.edit()
+            .putBoolean("ui_show_server", showServer)
+            .putBoolean("ui_show_igate", showIGate)
+            .putBoolean("ui_show_proxy", showProxy)
+            .putBoolean("ui_show_gpsgate", showGpsGate)
+            .apply()
+        _ui.value = _ui.value.copy(
+            showServerTab = showServer,
+            showIGateTab = showIGate,
+            showProxyTab = showProxy,
+            showGpsGateTab = showGpsGate,
+        )
+    }
+
+    fun loadTabVisibility() {
+        _ui.value = _ui.value.copy(
+            showServerTab = prefs.getBoolean("ui_show_server", true),
+            showIGateTab = prefs.getBoolean("ui_show_igate", true),
+            showProxyTab = prefs.getBoolean("ui_show_proxy", false),
+            showGpsGateTab = prefs.getBoolean("ui_show_gpsgate", false),
+        )
+    }
+
     // --- UI state mutators (called from ViewModel/service) ---
 
     fun setScanning(v: Boolean) { _ui.value = _ui.value.copy(scanning = v) }
@@ -345,6 +377,7 @@ class AppModel private constructor(context: Context) {
         o.put("igate", igateToJson(_ui.value.igateConfig))
         o.put("proxy", proxyToJson(_ui.value.proxyConfig))
         o.put("gpsGate", gpsGateToJson(_ui.value.gpsGateConfig))
+        o.put("ui", uiToJson())
         file.writeText(o.toString(2))
     }
 
@@ -362,11 +395,12 @@ class AppModel private constructor(context: Context) {
         val i = o.optJSONObject("igate")
         if (i != null) saveIGateConfig(igateFromJson(i, _ui.value.igateConfig))
         // proxy
-        val p = o.optJSONObject("proxy")
+val p = o.optJSONObject("proxy")
         if (p != null) saveProxyConfig(proxyFromJson(p, _ui.value.proxyConfig))
-        // gpsGate
         val g = o.optJSONObject("gpsGate")
         if (g != null) saveGpsGateConfig(gpsGateFromJson(g, _ui.value.gpsGateConfig))
+        val u = o.optJSONObject("ui")
+        if (u != null) uiFromJson(u)
     }
 
     /** Build the settings JSON string (used by both file and SAF exports). */
@@ -380,6 +414,8 @@ class AppModel private constructor(context: Context) {
         o.put("bridge", bridge)
         o.put("igate", igateToJson(_ui.value.igateConfig))
         o.put("proxy", proxyToJson(_ui.value.proxyConfig))
+        o.put("gpsGate", gpsGateToJson(_ui.value.gpsGateConfig))
+        o.put("ui", uiToJson())
         return o.toString(2)
     }
 
@@ -395,6 +431,8 @@ class AppModel private constructor(context: Context) {
         if (i != null) saveIGateConfig(igateFromJson(i, _ui.value.igateConfig))
         val p = o.optJSONObject("proxy")
         if (p != null) saveProxyConfig(proxyFromJson(p, _ui.value.proxyConfig))
+        val g = o.optJSONObject("gpsGate")
+        if (g != null) saveGpsGateConfig(gpsGateFromJson(g, _ui.value.gpsGateConfig))
     }
 
     // Export settings as settings.json inside a SAF folder Uri.
@@ -551,6 +589,21 @@ class AppModel private constructor(context: Context) {
             enabled = j.optBoolean("enabled", d.enabled),
             listenPort = j.optInt("listenPort", d.listenPort),
             servers = servers,
+        )
+    }
+
+    private fun uiToJson(): org.json.JSONObject = org.json.JSONObject()
+        .put("showServerTab", _ui.value.showServerTab)
+        .put("showIGateTab", _ui.value.showIGateTab)
+        .put("showProxyTab", _ui.value.showProxyTab)
+        .put("showGpsGateTab", _ui.value.showGpsGateTab)
+
+    private fun uiFromJson(j: org.json.JSONObject) {
+        saveTabVisibility(
+            showServer = j.optBoolean("showServerTab", _ui.value.showServerTab),
+            showIGate = j.optBoolean("showIGateTab", _ui.value.showIGateTab),
+            showProxy = j.optBoolean("showProxyTab", _ui.value.showProxyTab),
+            showGpsGate = j.optBoolean("showGpsGateTab", _ui.value.showGpsGateTab),
         )
     }
 }

@@ -2,7 +2,7 @@
  ==============================================================================
   GPSGate proxy configuration: local Franson GPSGate HTTP listener + forwarders
   Author:  dkxce (c)  https://github.com/dkxce/Tidradio-TD-H9
-  Version: v1.2.0
+  Version: v1.3.0
 
   English:  Configuration and stats for the GPSGate proxy. The proxy runs a
             local HTTP server that speaks the Franson GPSGate protocol

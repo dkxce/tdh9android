@@ -2,7 +2,7 @@
  ==============================================================================
   Top-level Compose screen: tabs, device scan, server control, log
   Author:  dkxce (c)  https://github.com/dkxce/Tidradio-TD-H9
-  Version: v1.1.0
+  Version: v1.3.0
 
   English:  Main Scaffold with bottom navigation (Radio / Server / Log /
             About) wiring the Compose tabs to the app callbacks.
@@ -49,12 +49,25 @@ fun RadioBridgeApp(
     onStopGpsGate: () -> Unit,
     onSaveGpsGateConfig: (GpsGateProxyConfig) -> Unit,
     onResetGpsGateStats: () -> Unit,
+    onTabVisibilityChange: (Boolean, Boolean, Boolean, Boolean) -> Unit,
     onClearLog: () -> Unit,
     onExitApp: () -> Unit,
     onExportSettings: () -> Unit,
     onImportSettings: () -> Unit,
 ) {
-    var tab by remember { mutableStateOf(0) }
+    // visible tabs in order; Radio, Log, About are always shown
+    val tabs = buildList {
+        add(AppTab(0, "Radio", Icons.Filled.Bluetooth))
+        if (state.showServerTab) add(AppTab(1, "Server", Icons.Filled.Settings))
+        if (state.showIGateTab) add(AppTab(2, "IGate", Icons.Filled.Cloud))
+        if (state.showProxyTab) add(AppTab(3, "Proxy", Icons.Filled.Link))
+        if (state.showGpsGateTab) add(AppTab(4, "GPSGate", Icons.Filled.LocationOn))
+        add(AppTab(5, "Log", Icons.Filled.Description))
+        add(AppTab(6, "About", Icons.Filled.Info))
+    }
+    var selected by remember { mutableStateOf(0) }
+    // effective selection: fall back to Radio if the selected tab got hidden
+    val effectiveSelected = if (tabs.none { it.key == selected }) 0 else selected
     val isConnected = state.connectedAddress != null
 
     Scaffold(
@@ -63,33 +76,30 @@ fun RadioBridgeApp(
         },
         bottomBar = {
             NavigationBar {
-                NavigationBarItem(selected = tab == 0, onClick = { tab = 0 },
-                    icon = { Icon(Icons.Filled.Bluetooth, null) }, label = { Text("Radio") })
-                NavigationBarItem(selected = tab == 1, onClick = { tab = 1 },
-                    icon = { Icon(Icons.Filled.Settings, null) }, label = { Text("Server") })
-                NavigationBarItem(selected = tab == 2, onClick = { tab = 2 },
-                    icon = { Icon(Icons.Filled.Cloud, null) }, label = { Text("IGate") })
-                NavigationBarItem(selected = tab == 3, onClick = { tab = 3 },
-                    icon = { Icon(Icons.Filled.Link, null) }, label = { Text("Proxy") })
-                NavigationBarItem(selected = tab == 4, onClick = { tab = 4 },
-                    icon = { Icon(Icons.Filled.Description, null) }, label = { Text("Log") })
-                NavigationBarItem(selected = tab == 5, onClick = { tab = 5 },
-                    icon = { Icon(Icons.Filled.LocationOn, null) }, label = { Text("GPSGate") })
-                NavigationBarItem(selected = tab == 6, onClick = { tab = 6 },
-                    icon = { Icon(Icons.Filled.Info, null) }, label = { Text("About") })
+                tabs.forEach { t ->
+                    NavigationBarItem(selected = effectiveSelected == t.key, onClick = { selected = t.key },
+                        icon = { Icon(t.icon, null) }, label = { Text(t.label) })
+                }
             }
         }
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
-            when (tab) {
+            when (effectiveSelected) {
                 0 -> DeviceTab(state, isConnected, onScan, onConnect, onDisconnect)
                 1 -> ServerTab(state, onStartServer, onStopServer, onSaveConfig)
                 2 -> IGateTab(state, onStartIGate, onStopIGate, onSaveIGateConfig)
                 3 -> ProxyTab(state, onStartProxy, onStopProxy, onSaveProxyConfig, onResetProxyStats, onClearProxyLog, onClearCache)
-                4 -> LogTab(state, onClearLog)
-                5 -> GpsGateTab(state, onStartGpsGate, onStopGpsGate, onSaveGpsGateConfig, onResetGpsGateStats)
-                6 -> AboutTab(onExitApp, onExportSettings, onImportSettings)
+                4 -> GpsGateTab(state, onStartGpsGate, onStopGpsGate, onSaveGpsGateConfig, onResetGpsGateStats)
+                5 -> LogTab(state, onClearLog)
+                6 -> AboutTab(state, onExitApp, onExportSettings, onImportSettings, onTabVisibilityChange)
             }
         }
     }
 }
+
+/** One item of the bottom navigation bar: fixed key, label and icon. */
+private data class AppTab(
+    val key: Int,
+    val label: String,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+)

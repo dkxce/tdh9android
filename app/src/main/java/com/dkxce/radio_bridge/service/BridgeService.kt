@@ -2,7 +2,7 @@
  ==============================================================================
   Foreground service hosting the BLE bridge and the TCP servers
   Author:  dkxce (c)  https://github.com/dkxce/Tidradio-TD-H9
-  Version: v1.1.0
+  Version: v1.3.0
 
   English:  Runs the whole bridge: keeps the BLE connection and the selected
             TCP server (Binary KISS / AGWPE / APRS-IS) alive, forwards radio

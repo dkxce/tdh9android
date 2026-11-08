@@ -2,7 +2,7 @@
  ==============================================================================
   ViewModel bridging the BridgeService AppModel state to the UI
   Author:  dkxce (c)  https://github.com/dkxce/Tidradio-TD-H9
-  Version: v1.1.0
+  Version: v1.3.0
 
   English:  Exposes the UiState StateFlow and settings mutations to Compose.
   Russian:  ViewModel, связывающий состояние AppModel с интерфейсом.
@@ -55,6 +55,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun resetGpsGateStats() = model.resetGpsGateStats()
     fun setGpsGateRunning(v: Boolean) = model.setGpsGateRunning(v)
     fun setGpsGateStats(s: GpsGateStats) = model.setGpsGateStats(s)
+    fun saveTabVisibility(showServer: Boolean, showIGate: Boolean, showProxy: Boolean, showGpsGate: Boolean) =
+        model.saveTabVisibility(showServer, showIGate, showProxy, showGpsGate)
 
     fun exportSettings(path: String) = model.exportSettings(java.io.File(path))
     fun importSettings(path: String) = model.importSettings(java.io.File(path))

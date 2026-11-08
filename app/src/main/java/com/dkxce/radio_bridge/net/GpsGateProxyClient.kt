@@ -2,7 +2,7 @@
  ==============================================================================
   GpsGateProxyClient: local Franson GPSGate HTTP server + remote forwarders
   Author:  dkxce (c)  https://github.com/dkxce/Tidradio-TD-H9
-  Version: v1.2.0
+  Version: v1.3.0
 
   English:  Runs a local HTTP server speaking the Franson GPSGate protocol
             (GET /?cmd=$FRCMD,...) on a configurable port (default 12014).

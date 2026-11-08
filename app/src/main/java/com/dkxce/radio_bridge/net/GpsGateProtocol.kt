@@ -2,7 +2,7 @@
  ==============================================================================
   GPSGate protocol helpers: $FRCMD parsing, CRC-64/ECMA, tracker packets
   Author:  dkxce (c)  https://github.com/dkxce/Tidradio-TD-H9
-  Version: v1.2.0
+  Version: v1.3.0
 
   English:  Franson GPSGate packets arrive as HTTP GET /?cmd=$FRCMD,... .
             This helper parses them into a position, derives a 16-char
