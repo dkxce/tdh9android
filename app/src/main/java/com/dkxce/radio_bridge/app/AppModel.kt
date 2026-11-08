@@ -433,6 +433,8 @@ val p = o.optJSONObject("proxy")
         if (p != null) saveProxyConfig(proxyFromJson(p, _ui.value.proxyConfig))
         val g = o.optJSONObject("gpsGate")
         if (g != null) saveGpsGateConfig(gpsGateFromJson(g, _ui.value.gpsGateConfig))
+        val u = o.optJSONObject("ui")
+        if (u != null) uiFromJson(u)
     }
 
     // Export settings as settings.json inside a SAF folder Uri.
