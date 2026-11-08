@@ -141,6 +141,9 @@ class MainActivity : ComponentActivity() {
                     onResetGpsGateStats = {
                         startService(BridgeService.ACTION_RESET_GPSGATE_STATS)
                     },
+                    onReapplyGpsGateConfig = {
+                        startService(BridgeService.ACTION_UPDATE_GPSGATE)
+                    },
                     onTabVisibilityChange = viewModel::saveTabVisibility,
                     onSaveConfig = viewModel::saveConfig,
                     onClearLog = viewModel::clearLog,

@@ -118,6 +118,7 @@ class BridgeService : Service() {
             ACTION_CLEAR_CACHE -> { proxy?.clearCaches() }
             ACTION_START_GPSGATE -> startGpsGate()
             ACTION_STOP_GPSGATE -> stopGpsGate()
+            ACTION_UPDATE_GPSGATE -> updateGpsGate()
             ACTION_RESET_GPSGATE_STATS -> { gpsGate?.resetStats() }
             ACTION_SEND_RADIO -> {
                 val data = intent.getByteArrayExtra(EXTRA_KISS)
@@ -378,6 +379,14 @@ class BridgeService : Service() {
         model.appendLog("[GPSGate] stopped")
     }
 
+    /** Re-apply the persisted config to a running proxy (no restart). */
+    private fun updateGpsGate() {
+        val g = gpsGate ?: return
+        val cfg = model.loadGpsGateConfig()
+        g.updateConfig(cfg)
+        model.appendLog("[GPSGate] config applied (${cfg.servers.size} server(s))")
+    }
+
     private fun pushGpsGateStats() {
         val g = gpsGate ?: return
         model.setGpsGateStats(g.statsSnapshot())
@@ -422,6 +431,7 @@ class BridgeService : Service() {
         const val ACTION_CLEAR_CACHE = "com.dkxce.radio_bridge.ACTION_CLEAR_CACHE"
         const val ACTION_START_GPSGATE = "com.dkxce.radio_bridge.ACTION_START_GPSGATE"
         const val ACTION_STOP_GPSGATE = "com.dkxce.radio_bridge.ACTION_STOP_GPSGATE"
+        const val ACTION_UPDATE_GPSGATE = "com.dkxce.radio_bridge.ACTION_UPDATE_GPSGATE"
         const val ACTION_RESET_GPSGATE_STATS = "com.dkxce.radio_bridge.ACTION_RESET_GPSGATE_STATS"
         const val ACTION_SEND_RADIO = "com.dkxce.radio_bridge.ACTION_SEND_RADIO"
         const val EXTRA_ADDR = "addr"

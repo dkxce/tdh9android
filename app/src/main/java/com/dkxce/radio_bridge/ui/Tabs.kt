@@ -303,10 +303,14 @@ fun AboutTab(
                         onCheckedChange = { onTabVisibilityChange(state.showServerTab, state.showIGateTab, it, state.showGpsGateTab) })
                     Text("Enable Proxy Mode", modifier = Modifier.weight(1f))
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = state.showGpsGateTab,
-                        onCheckedChange = { onTabVisibilityChange(state.showServerTab, state.showIGateTab, state.showProxyTab, it) })
-                    Text("Enable GPSGateProxy Mode", modifier = Modifier.weight(1f))
+                // GPSGateProxy checkbox visibility: decided on first launch by system
+                // language, then persisted; import can override it (see AppModel)
+                if (state.showGpsGateCheckbox) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = state.showGpsGateTab,
+                            onCheckedChange = { onTabVisibilityChange(state.showServerTab, state.showIGateTab, state.showProxyTab, it) })
+                        Text("Enable GPSGateProxy Mode", modifier = Modifier.weight(1f))
+                    }
                 }
             }
         }
@@ -683,6 +687,7 @@ fun GpsGateTab(
     onStopGpsGate: () -> Unit,
     onSaveGpsGateConfig: (GpsGateProxyConfig) -> Unit,
     onResetGpsGateStats: () -> Unit,
+    onReapplyConfig: () -> Unit,
 ) {
     val gcfg = state.gpsGateConfig
     var listenPort by remember(gcfg.listenPort) { mutableStateOf(gcfg.listenPort.toString()) }
@@ -699,13 +704,14 @@ fun GpsGateTab(
     // Auto-save on field change
     LaunchedEffect(listenPort, servers.toList()) {
         onSaveGpsGateConfig(collectCfg())
+        onReapplyConfig()
     }
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text("GPSGate Proxy (Franson GPSGate)", style = MaterialTheme.typography.titleMedium)
+        Text("GPSGate Proxy (Franson GPSGate HTTP)", style = MaterialTheme.typography.titleMedium)
         Text("Local HTTP server for GPSGate trackers; forwards positions as rtt006 / MT60 / GL200.",
             style = MaterialTheme.typography.bodySmall)
 
@@ -727,9 +733,15 @@ fun GpsGateTab(
             }
         }
         Button(onClick = {
-            servers.add(GpsGateServer(enabled = true, host = "vega.livegpstracks.ru", port = 3333,
-                proto = GpsGateProto.RTT006, imeiSource = GpsGateImeiSource.CRC_FRCMD))
-        }) { Text("Add server") }
+            if (servers.size < 8) {
+                servers.add(GpsGateServer(enabled = true, host = "vega.livegpstracks.ru", port = 3333,
+                    proto = GpsGateProto.RTT006, imeiSource = GpsGateImeiSource.CRC_FRCMD))
+            }
+        }, enabled = servers.size < 8) { Text("Add server") }
+        if (servers.size >= 8) {
+            Text("Maximum 8 servers", style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
 
         // control + stats
         if (state.gpsGateRunning) {
@@ -864,13 +876,23 @@ private fun GpsGateServerCard(
                 }
             }
             when (server.imeiSource) {
-                GpsGateImeiSource.EXPLICIT ->
-                    OutlinedTextField(value = server.imeiExplicit,
-                        onValueChange = { v ->
-                            val lower = v.lowercase().filter { it in '0'..'9' || it in 'a'..'f' }
-                            onChange(server.copy(imeiExplicit = lower.take(16)))
-                        },
-                        label = { Text("IMEI (16 hex)") }, singleLine = true)
+                GpsGateImeiSource.EXPLICIT -> {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedTextField(value = server.imeiExplicit,
+                            onValueChange = { v ->
+                                val lower = v.lowercase().filter { it in '0'..'9' || it in 'a'..'f' }
+                                onChange(server.copy(imeiExplicit = lower.take(16)))
+                            },
+                            label = { Text("IMEI (16 hex)") }, singleLine = true,
+                            modifier = Modifier.weight(1f))
+                        Spacer(Modifier.width(6.dp))
+                        OutlinedButton(onClick = {
+                            val chars = "0123456789abcdef"
+                            val rnd = (1..16).map { chars.random() }.joinToString("")
+                            onChange(server.copy(imeiExplicit = rnd))
+                        }) { Text("RANDOM") }
+                    }
+                }
                 GpsGateImeiSource.CRC_TEXT -> {
                     val computed = if (server.imeiText.isNotEmpty())
                         com.dkxce.radio_bridge.net.GpsGateProtocol.crc64Hex(server.imeiText) else ""

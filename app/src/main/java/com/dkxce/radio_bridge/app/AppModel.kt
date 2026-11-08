@@ -70,6 +70,8 @@ data class UiState(
     val showIGateTab: Boolean = true,
     val showProxyTab: Boolean = false,
     val showGpsGateTab: Boolean = false,
+    // GPSGate checkbox visibility: forced on by import (ui.showGpsGateCheckbox)
+    val showGpsGateCheckbox: Boolean = false,
     val log: List<String> = emptyList(),
 )
 
@@ -108,6 +110,13 @@ class AppModel private constructor(context: Context) {
 
     init {
         isConfigured = true
+        // First launch: decide the GPSGate checkbox visibility from the system
+        // language (Russian yes, other languages no) and persist it. Later
+        // launches reuse the saved value; import overrides it via JSON.
+        if (!prefs.contains("ui_show_gpsgate_checkbox")) {
+            val ru = java.util.Locale.getDefault().language == "ru"
+            prefs.edit().putBoolean("ui_show_gpsgate_checkbox", ru).apply()
+        }
         loadTabVisibility()
     }
 
@@ -261,7 +270,7 @@ class AppModel private constructor(context: Context) {
     }
 
     fun loadGpsGateConfig(): GpsGateProxyConfig {
-        val count = prefs.getInt("gpsgate_server_count", 1)
+        val count = prefs.getInt("gpsgate_server_count", 1).coerceAtMost(8)
         val servers = (0 until count).map { i ->
             GpsGateServer(
                 enabled = prefs.getBoolean("gpsgate_srv_${i}_enabled", i == 0),
@@ -313,7 +322,13 @@ class AppModel private constructor(context: Context) {
             showIGateTab = prefs.getBoolean("ui_show_igate", true),
             showProxyTab = prefs.getBoolean("ui_show_proxy", false),
             showGpsGateTab = prefs.getBoolean("ui_show_gpsgate", false),
+            showGpsGateCheckbox = prefs.getBoolean("ui_show_gpsgate_checkbox", false),
         )
+    }
+
+    fun setGpsGateCheckbox(show: Boolean) {
+        prefs.edit().putBoolean("ui_show_gpsgate_checkbox", show).apply()
+        _ui.value = _ui.value.copy(showGpsGateCheckbox = show)
     }
 
     // --- UI state mutators (called from ViewModel/service) ---
@@ -571,7 +586,7 @@ val p = o.optJSONObject("proxy")
     private fun gpsGateFromJson(j: org.json.JSONObject, d: GpsGateProxyConfig): GpsGateProxyConfig {
         val arr = j.optJSONArray("servers")
         val servers = if (arr != null && arr.length() > 0) {
-            (0 until arr.length()).map { i ->
+            (0 until arr.length().coerceAtMost(8)).map { i ->
                 val s = arr.getJSONObject(i)
                 GpsGateServer(
                     enabled = s.optBoolean("enabled", false),
@@ -599,6 +614,7 @@ val p = o.optJSONObject("proxy")
         .put("showIGateTab", _ui.value.showIGateTab)
         .put("showProxyTab", _ui.value.showProxyTab)
         .put("showGpsGateTab", _ui.value.showGpsGateTab)
+        .put("showGpsGateCheckbox", _ui.value.showGpsGateCheckbox)
 
     private fun uiFromJson(j: org.json.JSONObject) {
         saveTabVisibility(
@@ -607,5 +623,6 @@ val p = o.optJSONObject("proxy")
             showProxy = j.optBoolean("showProxyTab", _ui.value.showProxyTab),
             showGpsGate = j.optBoolean("showGpsGateTab", _ui.value.showGpsGateTab),
         )
+        setGpsGateCheckbox(j.optBoolean("showGpsGateCheckbox", _ui.value.showGpsGateCheckbox))
     }
 }

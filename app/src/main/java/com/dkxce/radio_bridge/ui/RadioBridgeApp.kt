@@ -49,6 +49,7 @@ fun RadioBridgeApp(
     onStopGpsGate: () -> Unit,
     onSaveGpsGateConfig: (GpsGateProxyConfig) -> Unit,
     onResetGpsGateStats: () -> Unit,
+    onReapplyGpsGateConfig: () -> Unit,
     onTabVisibilityChange: (Boolean, Boolean, Boolean, Boolean) -> Unit,
     onClearLog: () -> Unit,
     onExitApp: () -> Unit,
@@ -89,7 +90,7 @@ fun RadioBridgeApp(
                 1 -> ServerTab(state, onStartServer, onStopServer, onSaveConfig)
                 2 -> IGateTab(state, onStartIGate, onStopIGate, onSaveIGateConfig)
                 3 -> ProxyTab(state, onStartProxy, onStopProxy, onSaveProxyConfig, onResetProxyStats, onClearProxyLog, onClearCache)
-                4 -> GpsGateTab(state, onStartGpsGate, onStopGpsGate, onSaveGpsGateConfig, onResetGpsGateStats)
+                4 -> GpsGateTab(state, onStartGpsGate, onStopGpsGate, onSaveGpsGateConfig, onResetGpsGateStats, onReapplyGpsGateConfig)
                 5 -> LogTab(state, onClearLog)
                 6 -> AboutTab(state, onExitApp, onExportSettings, onImportSettings, onTabVisibilityChange)
             }
