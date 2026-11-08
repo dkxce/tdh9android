@@ -265,8 +265,8 @@ class AppModel private constructor(context: Context) {
         val servers = (0 until count).map { i ->
             GpsGateServer(
                 enabled = prefs.getBoolean("gpsgate_srv_${i}_enabled", i == 0),
-                host = prefs.getString("gpsgate_srv_${i}_host", "livegpstracks.ru")!!,
-                port = prefs.getInt("gpsgate_srv_${i}_port", 3349),
+                host = prefs.getString("gpsgate_srv_${i}_host", "vega.livegpstracks.ru")!!,
+                port = prefs.getInt("gpsgate_srv_${i}_port", 3333),
                 proto = runCatching {
                     GpsGateProto.valueOf(prefs.getString("gpsgate_srv_${i}_proto", GpsGateProto.RTT006.name)!!)
                 }.getOrDefault(GpsGateProto.RTT006),
@@ -573,8 +573,8 @@ val p = o.optJSONObject("proxy")
                 val s = arr.getJSONObject(i)
                 GpsGateServer(
                     enabled = s.optBoolean("enabled", false),
-                    host = s.optString("host", "livegpstracks.ru"),
-                    port = s.optInt("port", 3349),
+                    host = s.optString("host", "vega.livegpstracks.ru"),
+                    port = s.optInt("port", 3333),
                     proto = runCatching { GpsGateProto.valueOf(s.optString("proto", GpsGateProto.RTT006.name)) }
                         .getOrDefault(GpsGateProto.RTT006),
                     imeiSource = runCatching {

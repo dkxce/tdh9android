@@ -19,7 +19,11 @@
 package com.dkxce.radio_bridge.net
 
 /** Supported tracker protocol for the remote (outbound) servers. */
-enum class GpsGateProto { RTT006, MT60, GL200 }
+enum class GpsGateProto(val display: String) {
+    RTT006("RealTimeTracker rtt006 (:3349)"),
+    MT60("Megastek Meitrack MT60 (:3339)"),
+    GL200("Queclink GL200 (:3359)"),
+}
 
 /** How the device IMEI is derived for a server. */
 enum class GpsGateImeiSource {
@@ -31,8 +35,8 @@ enum class GpsGateImeiSource {
 /** One outbound server (host:port + protocol + IMEI rule). */
 data class GpsGateServer(
     val enabled: Boolean = false,
-    val host: String = "livegpstracks.ru",
-    val port: Int = 3349,
+    val host: String = "vega.livegpstracks.ru",
+    val port: Int = 3333,
     val proto: GpsGateProto = GpsGateProto.RTT006,
     val imeiSource: GpsGateImeiSource = GpsGateImeiSource.CRC_FRCMD,
     val imeiExplicit: String = "",   // 16 lowercase hex chars when EXPLICIT
@@ -44,7 +48,7 @@ data class GpsGateProxyConfig(
     val enabled: Boolean = false,        // master switch (UI)
     val listenPort: Int = 12014,         // local HTTP listener port
     val servers: List<GpsGateServer> = listOf(
-        GpsGateServer(enabled = true, host = "livegpstracks.ru", port = 3349,
+        GpsGateServer(enabled = true, host = "vega.livegpstracks.ru", port = 3333,
             proto = GpsGateProto.RTT006, imeiSource = GpsGateImeiSource.CRC_FRCMD),
     ),
 )

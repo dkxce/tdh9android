@@ -727,7 +727,7 @@ fun GpsGateTab(
             }
         }
         Button(onClick = {
-            servers.add(GpsGateServer(enabled = true, host = "livegpstracks.ru", port = 3349,
+            servers.add(GpsGateServer(enabled = true, host = "vega.livegpstracks.ru", port = 3333,
                 proto = GpsGateProto.RTT006, imeiSource = GpsGateImeiSource.CRC_FRCMD))
         }) { Text("Add server") }
 
@@ -764,9 +764,9 @@ fun GpsGateTab(
 
 /** Preset GPSGate servers offered in the server picker. */
 private val GPSGATE_PRESETS = listOf(
-    "livegpstracks.ru:3349",
-    "vega.livegpstracks.ru:3349",
-    "orion.livegpstracks.com:3349",
+    "vega.livegpstracks.ru:3333",
+    "leo.livegpstracks.ru:3333",
+    "orion.livegpstracks.com:3333",
 )
 
 /**
@@ -839,10 +839,10 @@ private fun GpsGateServerCard(
                 Text("Protocol: ", style = MaterialTheme.typography.bodyMedium)
                 var protoExpanded by remember { mutableStateOf(false) }
                 Box {
-                    OutlinedButton(onClick = { protoExpanded = true }) { Text(server.proto.name) }
+                    OutlinedButton(onClick = { protoExpanded = true }) { Text(server.proto.display) }
                     DropdownMenu(expanded = protoExpanded, onDismissRequest = { protoExpanded = false }) {
                         GpsGateProto.entries.forEach { p ->
-                            DropdownMenuItem(text = { Text(p.name) },
+                            DropdownMenuItem(text = { Text(p.display) },
                                 onClick = { onChange(server.copy(proto = p)); protoExpanded = false })
                         }
                     }
