@@ -57,16 +57,36 @@ object GpsGateProtocol {
         val alt = p.getOrNull(10)?.trim()?.toDoubleOrNull() ?: 0.0
         val date = p.getOrNull(11)?.trim() ?: ""
         val time = p.getOrNull(12)?.trim() ?: ""
+        // The $FRCMD payload may carry coordinates either as decimal degrees
+        // ("55.7558") or as NMEA ("4435.08340" = 44 deg 35.08340 min).
+        // NMEA lat has ≥3 digits before '.', NMEA lon has ≥4; convert to degrees.
+        val latVal = if (nmeaLike(lat, 3)) nmeaToDeg(lat) else lat
+        val lonVal = if (nmeaLike(lon, 4)) nmeaToDeg(lon) else lon
         return FrcmdPosition(
             senderId = sender,
-            lat = if (ns == "S") -lat else lat,
-            lon = if (ew == "W") -lon else lon,
+            lat = if (ns == "S") -latVal else latVal,
+            lon = if (ew == "W") -lonVal else lonVal,
             speedKmh = speed,
             course = course,
             altitude = alt,
             dateDdmmyy = date,
             timeHhmmss = time,
         )
+    }
+
+    // ------------------------------------------------------------------ coords
+    /** True when [v] looks like NMEA DDMM.mmmm (integer part length >= [minIntDigits]). */
+    private fun nmeaLike(v: Double, minIntDigits: Int): Boolean {
+        val s = java.math.BigDecimal.valueOf(v).toPlainString()
+        val intPart = s.substringBefore('.')
+        return intPart.length >= minIntDigits
+    }
+
+    /** NMEA DDMM.mmmm -> decimal degrees. */
+    private fun nmeaToDeg(v: Double): Double {
+        val d = Math.floor(v / 100.0)
+        val m = v - d * 100.0
+        return d + m / 60.0
     }
 
     // ------------------------------------------------------------- timestamp
