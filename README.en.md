@@ -1,6 +1,7 @@
 # TDH9RadioBridge · TNC via BLE on Android
 
-[RU](README.md) | [EN](README.en.md) | [Releases](https://github.com/dkxce/tdh9android/releases)
+[RU](README.md) | [EN](README.en.md) | [Releases](https://github.com/dkxce/tdh9android/releases)   
+[Instructions](HOWTO.md) | [Manual](HOWTO.en.md) | [Releases](https://github.com/dkxce/tdh9android/releases)
 
 Bridge between radios**TIDRadio TD-H9**BLE GATT (Odmaster Service)`af00`) and network**TCP/IP**with three protocols. The radio acts as a hardware KISS-TNC: phone
 connects via BLE and exchanges with the KISS / AX.25-frame radio, and the application
