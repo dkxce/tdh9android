@@ -52,9 +52,12 @@ object GpsGateProtocol {
         val ns = p.getOrNull(5)?.trim()?.uppercase()
         val lon = p.getOrNull(6)?.trim()?.toDoubleOrNull() ?: return null
         val ew = p.getOrNull(7)?.trim()?.uppercase()
-        val speed = p.getOrNull(8)?.trim()?.toDoubleOrNull() ?: 0.0
-        val course = p.getOrNull(9)?.trim()?.toDoubleOrNull() ?: 0.0
-        val alt = p.getOrNull(10)?.trim()?.toDoubleOrNull() ?: 0.0
+        // $FRCMD field order (index after splitting by comma):
+        // 8 = altitude (meters), 9 = speed in KNOTS, 10 = course (degrees)
+        val alt = p.getOrNull(8)?.trim()?.toDoubleOrNull() ?: 0.0
+        val speedKnots = p.getOrNull(9)?.trim()?.toDoubleOrNull() ?: 0.0
+        val course = p.getOrNull(10)?.trim()?.toDoubleOrNull() ?: 0.0
+        val speedKmh = speedKnots * 1.852   // knots -> km/h
         val date = p.getOrNull(11)?.trim() ?: ""
         val time = p.getOrNull(12)?.trim() ?: ""
         // The $FRCMD payload may carry coordinates either as decimal degrees
@@ -66,7 +69,7 @@ object GpsGateProtocol {
             senderId = sender,
             lat = if (ns == "S") -latVal else latVal,
             lon = if (ew == "W") -lonVal else lonVal,
-            speedKmh = speed,
+            speedKmh = speedKmh,
             course = course,
             altitude = alt,
             dateDdmmyy = date,
