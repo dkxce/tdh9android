@@ -37,6 +37,23 @@ data class FrcmdPosition(
     val timeHhmmss: String = "",  // raw HHMMSS from the packet
 )
 
+/**
+ * A single track point from a MapMyTracks / OruxMaps HTTP POST body.
+ * The timestamp is an absolute unix time (seconds), used as-is.
+ */
+data class MmPoint(
+    val lat: Double,      // decimal degrees
+    val lon: Double,
+    val altitude: Double, // meters
+    val unix: Long,       // unix seconds
+)
+
+/** Parsed MapMyTracks POST payload: a command plus a list of points. */
+data class MmRequest(
+    val command: String,        // start_activity / update_activity / stop_activity / get_time / ...
+    val points: List<MmPoint>,  // one entry per coordinate group (lat lon alt unix)
+)
+
 object GpsGateProtocol {
 
     // ------------------------------------------------------------------ FRCMD
@@ -90,6 +107,43 @@ object GpsGateProtocol {
         val d = Math.floor(v / 100.0)
         val m = v - d * 100.0
         return d + m / 60.0
+    }
+
+    // ------------------------------------------------------------------ MapMyTracks POST
+    /**
+     * Parse a MapMyTracks / OruxMaps HTTP POST body (application/x-www-form-urlencoded).
+     * Format ("points" field): "<lat> <lon> <alt> <unix> " repeated N times.
+     * Returns the command and all decoded points; empty list if no points.
+     */
+    fun parseMmPost(body: String): MmRequest {
+        val params = mutableMapOf<String, String>()
+        // split on '&', each key=value is percent-encoded
+        for (pair in body.split("&")) {
+            if (pair.isEmpty()) continue
+            val eq = pair.indexOf('=')
+            val k = if (eq >= 0) pair.substring(0, eq) else pair
+            val v = if (eq >= 0) pair.substring(eq + 1) else ""
+            try {
+                params[java.net.URLDecoder.decode(k, Charsets.UTF_8.name())] =
+                    java.net.URLDecoder.decode(v, Charsets.UTF_8.name())
+            } catch (_: Exception) { }
+        }
+        val command = params["request"] ?: ""
+        val pointsRaw = params["points"] ?: ""
+        val points = ArrayList<MmPoint>()
+        val tokens = pointsRaw.trim().split("\\s+".toRegex()).filter { it.isNotEmpty() }
+        var i = 0
+        while (i + 3 < tokens.size) {
+            val lat = tokens[i].toDoubleOrNull()
+            val lon = tokens[i + 1].toDoubleOrNull()
+            val alt = tokens[i + 2].toDoubleOrNull()
+            val unix = tokens[i + 3].toDoubleOrNull()?.toLong()
+            if (lat != null && lon != null && unix != null) {
+                points.add(MmPoint(lat = lat, lon = lon, altitude = alt ?: 0.0, unix = unix))
+            }
+            i += 4
+        }
+        return MmRequest(command = command, points = points)
     }
 
     // ------------------------------------------------------------- timestamp
@@ -248,6 +302,14 @@ object GpsGateProtocol {
         if (cal == null) {
             cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
         }
+        return buildPacketFromCalendar(proto, imei, pos, cal)
+    }
+
+    /**
+     * Build the outbound packet using an explicitly provided calendar (the
+     * MapMyTracks POST path, where each point carries its own unix time).
+     */
+    fun buildPacketFromCalendar(proto: GpsGateProto, imei: String, pos: FrcmdPosition, cal: java.util.Calendar): ByteArray {
         val s: String = when (proto) {
             GpsGateProto.RTT006 -> buildRtt006(imei, pos, cal)
             GpsGateProto.MT60 -> buildMt60(imei, pos, cal)

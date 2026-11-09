@@ -143,30 +143,55 @@ class GpsGateProxyClient(
             s.soTimeout = 10000
             val reader = BufferedReader(InputStreamReader(s.getInputStream(), Charsets.UTF_8))
             val out = s.getOutputStream()
-            var answered = false
-            while (running.get() && !answered) {
+            // read request line + headers
+            var requestLine: String? = null
+            val headers = HashMap<String, String>()
+            while (true) {
                 val line = reader.readLine() ?: break
                 if (line.isEmpty()) break
-                // HTTP request line: GET /?cmd=... HTTP/1.1
-                if (line.startsWith("GET ")) {
-                    val target = extractTarget(line)
-                    val pos = parseTarget(target)
-                    answered = true
-                    if (pos != null) {
-                        respond(out, "200 OK", "OK")
-                        synchronized(statsLock) {
-                            rxPackets++
-                            val stamp = java.time.LocalTime.now().withNano(0).toString()
-                            packetsLog.addFirst("$stamp $target")
-                            while (packetsLog.size > 20) packetsLog.removeLast()
-                        }
-                        forward(pos, target)
-                    } else {
-                        respond(out, "400 Bad Request", "BAD")
-                        onLog.log("[GPSGate] invalid request: $target")
-                    }
-                    bump()
+                if (requestLine == null) requestLine = line
+                else {
+                    val ci = line.indexOf(':')
+                    if (ci > 0) headers[line.substring(0, ci).trim().lowercase()] =
+                        line.substring(ci + 1).trim()
                 }
+            }
+            val rl = requestLine ?: return
+            if (rl.startsWith("GET ")) {
+                val target = extractTarget(rl)
+                val pos = parseTarget(target)
+                if (pos != null) {
+                    respond(out, "200 OK", "OK")
+                    synchronized(statsLock) {
+                        rxPackets++
+                        val stamp = java.time.LocalTime.now().withNano(0).toString()
+                        packetsLog.addFirst("$stamp $target")
+                        while (packetsLog.size > 20) packetsLog.removeLast()
+                    }
+                    forward(pos, target)
+                } else {
+                    respond(out, "400 Bad Request", "BAD")
+                    onLog.log("[GPSGate] invalid request: $target")
+                }
+                bump()
+            } else if (rl.startsWith("POST ")) {
+                // read body per Content-Length
+                val clen = headers["content-length"]?.toIntOrNull() ?: 0
+                val body = StringBuilder()
+                if (clen > 0) {
+                    val buf = CharArray(minOf(clen, 4096))
+                    var got = 0
+                    while (got < clen) {
+                        val n = reader.read(buf, 0, minOf(buf.size, clen - got))
+                        if (n <= 0) break
+                        body.append(buf, 0, n)
+                        got += n
+                    }
+                }
+                handlePost(rl, body.toString(), out)
+            } else {
+                respond(out, "405 Method Not Allowed", "NA")
+                onLog.log("[GPSGate] unsupported method: $rl")
             }
         } catch (_: Exception) {
         } finally {
@@ -175,30 +200,117 @@ class GpsGateProxyClient(
         }
     }
 
-    private fun extractTarget(requestLine: String): String {
-        // "GET /?cmd=... HTTP/1.1" -> "/?cmd=..."
-        val parts = requestLine.split(" ")
-        val p = if (parts.size > 1) parts[1] else "/"
-        return if (p.startsWith("/")) p else "/$p"
+    /** Process a MapMyTracks POST: extract points and forward each as a packet. */
+    private fun handlePost(rl: String, body: String, out: OutputStream) {
+        val req = GpsGateProtocol.parseMmPost(body)
+        val path = rl.split(" ").getOrNull(1) ?: "/"
+        if (req.command == "start_activity" || req.command == "update_activity") {
+            if (req.points.isNotEmpty()) {
+                // forward every point, earliest first (they arrive in order)
+                val target = "POST $path body"
+                synchronized(statsLock) {
+                    rxPackets += req.points.size
+                    val stamp = java.time.LocalTime.now().withNano(0).toString()
+                    packetsLog.addFirst("$stamp POST ${req.command} points=${req.points.size}")
+                    while (packetsLog.size > 20) packetsLog.removeLast()
+                }
+                for (pt in req.points) {
+                    forwardMm(pt, target)
+                }
+            }
+            // XML reply as OruxMaps expects
+            val bodyXml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><message>" +
+                "<type>activity_started</type><activity_id>1</activity_id></message>"
+            respondXml(out, "200 OK", bodyXml)
+            onLog.log("[GPSGate] POST ${req.command} points=${req.points.size}")
+        } else if (req.command == "stop_activity") {
+            respondXml(out, "200 OK",
+                "<?xml version=\"1.0\" encoding=\"UTF-8\"?><message><type>activity_stopped</type></message>")
+            onLog.log("[GPSGate] POST stop_activity")
+        } else if (req.command == "get_time") {
+            val now = System.currentTimeMillis() / 1000
+            respondXml(out, "200 OK",
+                "<?xml version=\"1.0\" encoding=\"UTF-8\"?><message><type>time</type><server_time>$now</server_time></message>")
+            onLog.log("[GPSGate] POST get_time -> $now")
+        } else {
+            respondXml(out, "200 OK",
+                "<?xml version=\"1.0\" encoding=\"UTF-8\"?><message><type>error</type>" +
+                "<reason>request not supported</reason></message>")
+            onLog.log("[GPSGate] POST unsupported request: ${req.command}")
+        }
     }
 
-    private fun parseTarget(target: String): FrcmdPosition? {
-        // /?cmd=$FRCMD,... 
-        val qIdx = target.indexOf('?')
-        if (qIdx < 0) return null
-        val query = target.substring(qIdx + 1)
-        val cmdIdx = query.indexOf("cmd=")
-        if (cmdIdx < 0) return null
-        var cmd = query.substring(cmdIdx + 4)
-        val amp = cmd.indexOf('&')
-        if (amp >= 0) cmd = cmd.substring(0, amp)
-        return GpsGateProtocol.parseFrcmd(java.net.URLDecoder.decode(cmd, Charsets.UTF_8.name()))
+    /** Forward a single MapMyTracks point as one outbound packet (unix time as-is). */
+    private fun forwardMm(pt: MmPoint, target: String) {
+        val cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
+        cal.timeInMillis = pt.unix * 1000L
+        for (server in cfg.servers) {
+            if (!server.enabled) continue
+            val p = FrcmdPosition(
+                senderId = "", lat = pt.lat, lon = pt.lon,
+                speedKmh = 0.0, course = 0.0, altitude = pt.altitude,
+            )
+            executor.execute { sendMmToServer(server, p, cal, target) }
+        }
     }
+
+    private fun sendMmToServer(server: GpsGateServer, pos: FrcmdPosition, cal: java.util.Calendar, target: String) {
+        try {
+            val imei = GpsGateProtocol.resolveImei(server, pos.senderId)
+            val payload = buildPacketWithCalendar(server.proto, imei, pos, cal)
+            val payloadText = payload.toString(Charsets.UTF_8).trim()
+            val ok = try {
+                val s = Socket()
+                try {
+                    s.connect(InetSocketAddress(server.host, server.port), 10000)
+                    s.soTimeout = 5000
+                    s.getOutputStream().write(payload)
+                    s.getOutputStream().flush()
+                    try { s.getInputStream().read(ByteArray(64)) } catch (_: Exception) { }
+                    true
+                } finally {
+                    try { s.close() } catch (_: Exception) { }
+                }
+            } catch (e: Exception) {
+                false
+            }
+            if (ok) {
+                synchronized(statsLock) { txPackets++ }
+                onLog.log("[GPSGate] -> ${server.host}:${server.port} [${server.proto.name}] OK (imei=$imei)")
+                onLog.log("[GPSGate]    ${payloadText}")
+            } else {
+                synchronized(statsLock) { failedPackets++ }
+                onLog.log("[GPSGate!] -> ${server.host}:${server.port} [${server.proto.name}] failed (imei=$imei)")
+                onLog.log("[GPSGate]    ${payloadText}")
+            }
+        } catch (e: Exception) {
+            synchronized(statsLock) { failedPackets++ }
+            onLog.log("[GPSGate!] -> ${server.host}:${server.port} ERROR: ${e.message}")
+        }
+        bump()
+    }
+
+    /** Build an outbound packet using an explicit calendar (POST path). */
+    private fun buildPacketWithCalendar(proto: GpsGateProto, imei: String, pos: FrcmdPosition, cal: java.util.Calendar): ByteArray =
+        GpsGateProtocol.buildPacketFromCalendar(proto, imei, pos, cal)
 
     private fun respond(out: OutputStream, status: String, body: String) {
         val bytes = body.toByteArray(Charsets.UTF_8)
         val head = "HTTP/1.1 $status\r\n" +
             "Content-Type: text/plain\r\n" +
+            "Content-Length: ${bytes.size}\r\n" +
+            "Connection: close\r\n\r\n"
+        try {
+            out.write(head.toByteArray(Charsets.UTF_8))
+            out.write(bytes)
+            out.flush()
+        } catch (_: Exception) { }
+    }
+
+    private fun respondXml(out: OutputStream, status: String, body: String) {
+        val bytes = body.toByteArray(Charsets.UTF_8)
+        val head = "HTTP/1.1 $status\r\n" +
+            "Content-Type: text/xml; charset=UTF-8\r\n" +
             "Content-Length: ${bytes.size}\r\n" +
             "Connection: close\r\n\r\n"
         try {
