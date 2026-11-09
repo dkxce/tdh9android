@@ -140,63 +140,103 @@ class GpsGateProxyClient(
 
     private fun handleClient(s: Socket) {
         try {
-            s.soTimeout = 10000
+            s.soTimeout = 15000
             val reader = BufferedReader(InputStreamReader(s.getInputStream(), Charsets.UTF_8))
             val out = s.getOutputStream()
-            // read request line + headers
-            var requestLine: String? = null
-            val headers = HashMap<String, String>()
-            while (true) {
-                val line = reader.readLine() ?: break
-                if (line.isEmpty()) break
-                if (requestLine == null) requestLine = line
-                else {
-                    val ci = line.indexOf(':')
-                    if (ci > 0) headers[line.substring(0, ci).trim().lowercase()] =
-                        line.substring(ci + 1).trim()
-                }
-            }
-            val rl = requestLine ?: return
-            if (rl.startsWith("GET ")) {
-                val target = extractTarget(rl)
-                val pos = parseTarget(target)
-                if (pos != null) {
-                    respond(out, "200 OK", "OK")
-                    synchronized(statsLock) {
-                        rxPackets++
-                        val stamp = java.time.LocalTime.now().withNano(0).toString()
-                        packetsLog.addFirst("$stamp $target")
-                        while (packetsLog.size > 20) packetsLog.removeLast()
-                    }
-                    forward(pos, target)
-                } else {
-                    respond(out, "400 Bad Request", "BAD")
-                    onLog.log("[GPSGate] invalid request: $target")
-                }
-                bump()
-            } else if (rl.startsWith("POST ")) {
-                // read body per Content-Length
-                val clen = headers["content-length"]?.toIntOrNull() ?: 0
-                val body = StringBuilder()
-                if (clen > 0) {
-                    val buf = CharArray(minOf(clen, 4096))
-                    var got = 0
-                    while (got < clen) {
-                        val n = reader.read(buf, 0, minOf(buf.size, clen - got))
-                        if (n <= 0) break
-                        body.append(buf, 0, n)
-                        got += n
-                    }
-                }
-                handlePost(rl, body.toString(), out)
+            // read the first line only; decide the protocol from it
+            val first = reader.readLine() ?: return
+            if (first.startsWith("GET ") || first.startsWith("POST ")) {
+                handleHttp(reader, out, first)
+            } else if (isOkMapLine(first)) {
+                handleOkMapConnection(reader, out, first)
             } else {
-                respond(out, "405 Method Not Allowed", "NA")
-                onLog.log("[GPSGate] unsupported method: $rl")
+                // unsupported protocol: drop the connection
+                onLog.log("[GPSGate] unsupported protocol, closing: ${first.take(60)}")
+                try { s.close() } catch (_: Exception) { }
             }
         } catch (_: Exception) {
         } finally {
             clients.remove(s)
             try { s.close() } catch (_: Exception) { }
+        }
+    }
+
+    /** True when the line looks like an OkMap packet (base / $OKMAP-*). */
+    private fun isOkMapLine(line: String): Boolean {
+        val t = line.trim()
+        if (t.isEmpty()) return false
+        return t.startsWith("\$OKMAP") || (!t.startsWith("GET ") && !t.startsWith("POST ") &&
+            t.contains(';') && !t.contains(' '))
+    }
+
+    /** Handle an HTTP request (GET ?cmd= or POST MapMyTracks). */
+    private fun handleHttp(reader: BufferedReader, out: OutputStream, requestLine: String) {
+        val headers = HashMap<String, String>()
+        while (true) {
+            val line = reader.readLine() ?: break
+            if (line.isEmpty()) break
+            val ci = line.indexOf(':')
+            if (ci > 0) headers[line.substring(0, ci).trim().lowercase()] =
+                line.substring(ci + 1).trim()
+        }
+        if (requestLine.startsWith("GET ")) {
+            val target = extractTarget(requestLine)
+            val pos = parseTarget(target)
+            if (pos != null) {
+                respond(out, "200 OK", "OK")
+                synchronized(statsLock) {
+                    rxPackets++
+                    val stamp = java.time.LocalTime.now().withNano(0).toString()
+                    packetsLog.addFirst("$stamp $target")
+                    while (packetsLog.size > 20) packetsLog.removeLast()
+                }
+                forward(pos, target)
+            } else {
+                respond(out, "400 Bad Request", "BAD")
+                onLog.log("[GPSGate] invalid request: $target")
+            }
+            bump()
+        } else { // POST
+            val clen = headers["content-length"]?.toIntOrNull() ?: 0
+            val body = StringBuilder()
+            if (clen > 0) {
+                val buf = CharArray(minOf(clen, 4096))
+                var got = 0
+                while (got < clen) {
+                    val n = reader.read(buf, 0, minOf(buf.size, clen - got))
+                    if (n <= 0) break
+                    body.append(buf, 0, n)
+                    got += n
+                }
+            }
+            handlePost(requestLine, body.toString(), out)
+        }
+    }
+
+    /**
+     * Handle an OkMap TCP connection: read lines until EOF and forward every
+     * recognised track point as a separate outbound packet.
+     */
+    private fun handleOkMapConnection(reader: BufferedReader, out: OutputStream, firstLine: String) {
+        onLog.log("[GPSGate] OkMap connection")
+        var line: String? = firstLine
+        while (line != null) {
+            val t = line.trim()
+            if (t.isNotEmpty()) {
+                val tr = GpsGateProtocol.parseOkMap(t)
+                if (tr != null) {
+                    synchronized(statsLock) {
+                        rxPackets++
+                        val stamp = java.time.LocalTime.now().withNano(0).toString()
+                        packetsLog.addFirst("$stamp OKMAP ${tr.sender}")
+                        while (packetsLog.size > 20) packetsLog.removeLast()
+                    }
+                    forwardOkMap(tr, "OKMAP " + tr.sender)
+                } else {
+                    onLog.log("[GPSGate] unrecognized OkMap line: ${t.take(80)}")
+                }
+            }
+            line = reader.readLine()
         }
     }
 
@@ -271,6 +311,41 @@ class GpsGateProxyClient(
                 speedKmh = 0.0, course = 0.0, altitude = pt.altitude,
             )
             executor.execute { sendMmToServer(server, p, cal, target) }
+        }
+    }
+
+    /**
+     * Forward a single OkMap track point as one outbound packet. The OkMap
+     * sender (uuid) is used as the IMEI source (CRC64 when configured), and the
+     * speed/bearing/altitude come from the packet as-is.
+     */
+    private fun forwardOkMap(tr: OkMapTrack, target: String) {
+        // OkMap datetime format: "MM/dd/yyyy HH:mm:ss" (UTC)
+        val cal = parseOkMapDate(tr.dateTime)
+        for (server in cfg.servers) {
+            if (!server.enabled) continue
+            val p = FrcmdPosition(
+                senderId = tr.sender,
+                lat = tr.lat,
+                lon = tr.lon,
+                speedKmh = tr.speedKmh,
+                course = tr.bearing,
+                altitude = tr.altitude,
+            )
+            executor.execute { sendMmToServer(server, p, cal, target) }
+        }
+    }
+
+    /** Parse OkMap "MM/dd/yyyy HH:mm:ss" (UTC) into a Calendar; fallback: now UTC. */
+    private fun parseOkMapDate(dateTime: String): java.util.Calendar {
+        return try {
+            val fmt = java.text.SimpleDateFormat("MM/dd/yyyy HH:mm:ss", java.util.Locale.US)
+            fmt.timeZone = java.util.TimeZone.getTimeZone("UTC")
+            java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC")).apply {
+                timeInMillis = fmt.parse(dateTime).time
+            }
+        } catch (_: Exception) {
+            java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
         }
     }
 

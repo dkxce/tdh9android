@@ -54,6 +54,17 @@ data class MmRequest(
     val points: List<MmPoint>,  // one entry per coordinate group (lat lon alt unix)
 )
 
+/** A track point from an OkMap Live Tracking TCP packet. */
+data class OkMapTrack(
+    val sender: String,      // device uuid, e.g. 031fd58f-2dba-41c6-97fe-02c29f1fc730
+    val lat: Double,         // decimal degrees
+    val lon: Double,
+    val altitude: Double,    // meters
+    val speedKmh: Double,    // km/h (as sent by OkMap)
+    val bearing: Double,     // degrees
+    val dateTime: String,    // "MM/dd/yyyy HH:mm:ss" (UTC per OkMap spec)
+)
+
 object GpsGateProtocol {
 
     // ------------------------------------------------------------------ FRCMD
@@ -144,6 +155,52 @@ object GpsGateProtocol {
             i += 4
         }
         return MmRequest(command = command, points = points)
+    }
+
+    // ------------------------------------------------------------------ OkMap
+    /**
+     * Parse a single OkMap Live Tracking line (separators: ';').
+     * Supports the base format, $OKMAP-V01 and $OKMAP-V02 (track points).
+     * Returns null for waypoints / unrecognised lines.
+     */
+    fun parseOkMap(line: String): OkMapTrack? {
+        val parts = line.trim().split(";").map { it.trim() }
+        if (parts.size < 2 || parts[0].isEmpty()) return null
+
+        // $OKMAP-V02;T;<id>;<lon>;<lat>;<alt>;<dt>;<speed>;<bearing>;<newseg>[;...]
+        if (parts[0] == "\$OKMAP-V02") {
+            if (parts.size < 9 || parts[1].uppercase() != "T") return null
+            return buildTrack(parts[2], parts[3], parts[4], parts[5], parts[6], parts[7], parts[8])
+        }
+        // $OKMAP-V01;<id>;<lon>;<lat>;<alt>;<dt>;<speed>;<bearing>;<newseg>[;...]
+        if (parts[0] == "\$OKMAP-V01") {
+            if (parts.size < 9) return null
+            return buildTrack(parts[1], parts[2], parts[3], parts[4], parts[5], parts[6], parts[7])
+        }
+        // base: <id>;<lon>;<lat>;<alt>;<dt>;<speed>;<bearing>[;...]
+        if (parts[0].startsWith("\$OKMAP")) return null   // V02 waypoint or unknown $OKMAP
+        if (parts.size >= 7) {
+            return buildTrack(parts[0], parts[1], parts[2], parts[3], parts[4], parts[5], parts[6])
+        }
+        return null
+    }
+
+    /** Build an OkMapTrack from string fields (numbers may be "0" or decimals). */
+    private fun buildTrack(
+        sender: String, lonS: String, latS: String, altS: String,
+        dt: String, speedS: String, bearingS: String,
+    ): OkMapTrack? {
+        val lat = latS.toDoubleOrNull() ?: return null
+        val lon = lonS.toDoubleOrNull() ?: return null
+        return OkMapTrack(
+            sender = sender,
+            lat = lat,
+            lon = lon,
+            altitude = altS.toDoubleOrNull() ?: 0.0,
+            speedKmh = speedS.toDoubleOrNull() ?: 0.0,
+            bearing = bearingS.toDoubleOrNull() ?: 0.0,
+            dateTime = dt,
+        )
     }
 
     // ------------------------------------------------------------- timestamp

@@ -717,7 +717,7 @@ fun GpsGateTab(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text("GPSGate Proxy (Franson GPSGate HTTP)", style = MaterialTheme.typography.titleMedium)
-        Text("Local HTTP server for GPSGate trackers (GET) and MapMyTracks (POST)",
+        Text("Local HTTP server for GPSGate trackers (GET), MapMyTracks (POST) and OkMap (RAW)",
             style = MaterialTheme.typography.bodySmall)
 
         OutlinedTextField(value = listenPort, onValueChange = { listenPort = it },
