@@ -987,7 +987,7 @@ private fun GpsGateServerCard(
                     }
                 }
                 GpsGateImeiSource.CRC_FRCMD ->
-                    Text("IMEI = CRC64(\$FRCMD sender id)", style = MaterialTheme.typography.bodySmall,
+                    Text("IMEI = CRC64(sender id)\n(\$FRCMD sender or OkMap uuid)", style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
