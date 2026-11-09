@@ -200,6 +200,26 @@ class GpsGateProxyClient(
         }
     }
 
+    private fun extractTarget(requestLine: String): String {
+        // "GET /?cmd=... HTTP/1.1" -> "/?cmd=..."
+        val parts = requestLine.split(" ")
+        val p = if (parts.size > 1) parts[1] else "/"
+        return if (p.startsWith("/")) p else "/$p"
+    }
+
+    private fun parseTarget(target: String): FrcmdPosition? {
+        // /?cmd=$FRCMD,...
+        val qIdx = target.indexOf('?')
+        if (qIdx < 0) return null
+        val query = target.substring(qIdx + 1)
+        val cmdIdx = query.indexOf("cmd=")
+        if (cmdIdx < 0) return null
+        var cmd = query.substring(cmdIdx + 4)
+        val amp = cmd.indexOf('&')
+        if (amp >= 0) cmd = cmd.substring(0, amp)
+        return GpsGateProtocol.parseFrcmd(java.net.URLDecoder.decode(cmd, Charsets.UTF_8.name()))
+    }
+
     /** Process a MapMyTracks POST: extract points and forward each as a packet. */
     private fun handlePost(rl: String, body: String, out: OutputStream) {
         val req = GpsGateProtocol.parseMmPost(body)
