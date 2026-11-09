@@ -264,15 +264,19 @@ class GpsGateProxyClient(
     private fun handlePost(rl: String, body: String, out: OutputStream) {
         val req = GpsGateProtocol.parseMmPost(body)
         val path = rl.split(" ").getOrNull(1) ?: "/"
+        // always log request + point count (also for stop/get_time with 0 points)
+        synchronized(statsLock) {
+            val stamp = java.time.LocalTime.now().withNano(0).toString()
+            packetsLog.addFirst("$stamp POST ${req.command} points=${req.points.size}")
+            while (packetsLog.size > 20) packetsLog.removeLast()
+        }
+        onLog.log("[GPSGate] POST ${req.command} points=${req.points.size}")
         if (req.command == "start_activity" || req.command == "update_activity") {
             if (req.points.isNotEmpty()) {
                 // forward every point, earliest first (they arrive in order)
                 val target = "POST $path body"
                 synchronized(statsLock) {
                     rxPackets += req.points.size
-                    val stamp = java.time.LocalTime.now().withNano(0).toString()
-                    packetsLog.addFirst("$stamp POST ${req.command} points=${req.points.size}")
-                    while (packetsLog.size > 20) packetsLog.removeLast()
                 }
                 for (pt in req.points) {
                     forwardMm(pt, target)
@@ -282,21 +286,17 @@ class GpsGateProxyClient(
             val bodyXml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><message>" +
                 "<type>activity_started</type><activity_id>1</activity_id></message>"
             respondXml(out, "200 OK", bodyXml)
-            onLog.log("[GPSGate] POST ${req.command} points=${req.points.size}")
         } else if (req.command == "stop_activity") {
             respondXml(out, "200 OK",
                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><message><type>activity_stopped</type></message>")
-            onLog.log("[GPSGate] POST stop_activity")
         } else if (req.command == "get_time") {
             val now = System.currentTimeMillis() / 1000
             respondXml(out, "200 OK",
                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><message><type>time</type><server_time>$now</server_time></message>")
-            onLog.log("[GPSGate] POST get_time -> $now")
         } else {
             respondXml(out, "200 OK",
                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?><message><type>error</type>" +
                 "<reason>request not supported</reason></message>")
-            onLog.log("[GPSGate] POST unsupported request: ${req.command}")
         }
     }
 

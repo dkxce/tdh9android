@@ -175,9 +175,13 @@ fun ServerTab(
                 color = MaterialTheme.colorScheme.primary)
             if (state.clientsList.isNotEmpty()) {
                 Text("Connected clients:", style = MaterialTheme.typography.labelMedium)
-                state.clientsList.forEach { c ->
-                    Text(c, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                        style = MaterialTheme.typography.bodySmall)
+                androidx.compose.foundation.text.selection.SelectionContainer {
+                    Column {
+                        state.clientsList.forEach { c ->
+                            Text(c, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
                 }
             } else {
                 Text("No clients yet", style = MaterialTheme.typography.bodySmall,
@@ -204,10 +208,14 @@ fun ServerTab(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
-            ips.forEach { ip ->
-                Text("$ip:${port.toIntOrNull() ?: state.port}",
-                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                    style = MaterialTheme.typography.bodySmall)
+            androidx.compose.foundation.text.selection.SelectionContainer {
+                Column {
+                    ips.forEach { ip ->
+                        Text("$ip:${port.toIntOrNull() ?: state.port}",
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                }
             }
             Text("Connect to one of these addresses from another device on the same network.",
                 style = MaterialTheme.typography.bodySmall,
@@ -224,14 +232,19 @@ fun LogTab(state: UiState, onClearLog: () -> Unit) {
             TextButton(onClick = onClearLog) { Text("Clear") }
         }
         Spacer(Modifier.height(4.dp))
-        LazyColumn(
+        // selectable text: long-press / drag to select, then copy
+        androidx.compose.foundation.text.selection.SelectionContainer(
             modifier = Modifier.fillMaxSize(),
-            reverseLayout = true,
         ) {
-            items(state.log.reversed()) { line ->
-                Text(line, style = MaterialTheme.typography.bodySmall,
-                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                    modifier = Modifier.padding(vertical = 1.dp))
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                reverseLayout = true,
+            ) {
+                items(state.log.reversed()) { line ->
+                    Text(line, style = MaterialTheme.typography.bodySmall,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        modifier = Modifier.padding(vertical = 1.dp))
+                }
             }
         }
     }
@@ -561,10 +574,14 @@ fun ProxyTab(
                         modifier = Modifier.weight(1f))
                     TextButton(onClick = onClearProxyLog) { Text("Clear") }
                 }
-                s.packetsLog.take(20).forEach { p ->
-                    Text(p, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(vertical = 1.dp))
+                androidx.compose.foundation.text.selection.SelectionContainer {
+                    Column {
+                        s.packetsLog.take(20).forEach { p ->
+                            Text(p, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(vertical = 1.dp))
+                        }
+                    }
                 }
             }
         } else {
@@ -777,9 +794,13 @@ fun GpsGateTab(
             TextButton(onClick = onResetGpsGateStats) { Text("Reset stats") }
             if (s.packetsLog.isNotEmpty()) {
                 Text("Last packets:", style = MaterialTheme.typography.labelLarge)
-                s.packetsLog.take(20).forEach { p ->
-                    Text(p, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                        style = MaterialTheme.typography.bodySmall)
+                androidx.compose.foundation.text.selection.SelectionContainer {
+                    Column {
+                        s.packetsLog.take(20).forEach { p ->
+                            Text(p, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
                 }
             }
         } else {
