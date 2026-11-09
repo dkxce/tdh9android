@@ -1,0 +1,7 @@
+{
+    "forwarding_services": [
+        "vega.livegpstracks.ru:3333",
+        "leo.livegpstracks.ru:3333",
+        "orion.livegpstracks.com:3333"
+    ]
+}
