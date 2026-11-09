@@ -694,6 +694,8 @@ fun GpsGateTab(
     var listenPort by remember(gcfg.listenPort) { mutableStateOf(gcfg.listenPort.toString()) }
     var timestampMode by remember(gcfg.timestampMode) { mutableStateOf(gcfg.timestampMode) }
     val servers = remember(gcfg.servers) { gcfg.servers.toMutableStateList() }
+    // presets: loaded from the network (falls back to built-in list)
+    val presets = rememberGpsGatePresets()
 
     fun collectCfg(): GpsGateProxyConfig {
         return GpsGateProxyConfig(
@@ -744,6 +746,7 @@ fun GpsGateTab(
             key(idx) {
                 GpsGateServerCard(
                     server = s,
+                    presets = presets,
                     onChange = { servers[idx] = it },
                     onRemove = { servers.removeAt(idx) },
                 )
@@ -792,12 +795,44 @@ fun GpsGateTab(
     }
 }
 
-/** Preset GPSGate servers offered in the server picker. */
-private val GPSGATE_PRESETS = listOf(
+/** Default preset GPSGate servers (used when the remote list is unavailable). */
+private val GPSGATE_PRESETS_DEFAULT = listOf(
     "vega.livegpstracks.ru:3333",
     "leo.livegpstracks.ru:3333",
     "orion.livegpstracks.com:3333",
 )
+
+/** Remote source of the GPSGate forwarding-server presets. */
+private const val GPSGATE_PRESETS_URL =
+    "https://raw.githubusercontent.com/dkxce/tdh9android/refs/heads/main/Resources/gpsgatecfg.json"
+
+/**
+ * Load the preset server list from the network (asynchronously).
+ * Falls back to the built-in list on any failure (offline / bad JSON).
+ */
+@Composable
+private fun rememberGpsGatePresets(): List<String> {
+    var presets by remember { mutableStateOf(GPSGATE_PRESETS_DEFAULT) }
+    LaunchedEffect(Unit) {
+        presets = try {
+            val conn = java.net.URL(GPSGATE_PRESETS_URL).openConnection()
+            conn.connectTimeout = 5000
+            conn.readTimeout = 5000
+            val text = conn.getInputStream().bufferedReader(Charsets.UTF_8).use { it.readText() }
+            val arr = org.json.JSONObject(text).optJSONArray("forwarding_services")
+            val list = ArrayList<String>()
+            if (arr != null) {
+                for (i in 0 until arr.length()) {
+                    arr.optString(i)?.takeIf { it.isNotBlank() }?.let { list.add(it) }
+                }
+            }
+            if (list.isEmpty()) GPSGATE_PRESETS_DEFAULT else list
+        } catch (_: Exception) {
+            GPSGATE_PRESETS_DEFAULT
+        }
+    }
+    return presets
+}
 
 /**
  * One outbound server card: enable checkbox, host:port field (with a preset
@@ -806,6 +841,7 @@ private val GPSGATE_PRESETS = listOf(
 @Composable
 private fun GpsGateServerCard(
     server: GpsGateServer,
+    presets: List<String>,
     onChange: (GpsGateServer) -> Unit,
     onRemove: () -> Unit,
 ) {
@@ -853,7 +889,7 @@ private fun GpsGateServerCard(
                     var open by remember { mutableStateOf(false) }
                     OutlinedButton(onClick = { open = true }) { Text("Preset") }
                     DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-                        GPSGATE_PRESETS.forEach { p ->
+                        presets.forEach { p ->
                             DropdownMenuItem(text = { Text(p) },
                                 onClick = {
                                     preset = p

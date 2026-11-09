@@ -402,11 +402,21 @@ class BridgeService : Service() {
 
     @Suppress("DEPRECATION")
     private fun startForegroundNotify() {
+        // tapping the notification opens the main activity
+        val openApp = android.app.PendingIntent.getActivity(
+            this, 0,
+            android.content.Intent(this, com.dkxce.radio_bridge.MainActivity::class.java)
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP),
+            if (Build.VERSION.SDK_INT >= 23)
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+            else android.app.PendingIntent.FLAG_UPDATE_CURRENT,
+        )
         val n: Notification = androidx.core.app.NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.service_notification_title))
             .setContentText(getString(R.string.service_notification_text))
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setOngoing(true)
+            .setContentIntent(openApp)
             .build()
         if (Build.VERSION.SDK_INT >= 29) {
             startForeground(NOTIF_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
