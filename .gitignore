@@ -1,3 +1,4 @@
 /dist/*.zip
 /.chat.txt
 /dist/TDH9RadioBridgeBackup.json
+/dist/OwnTracks.otrc
