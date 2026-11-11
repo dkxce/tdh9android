@@ -29,6 +29,9 @@ import com.dkxce.radio_bridge.core.Kiss
 import com.dkxce.radio_bridge.core.KissFrameCallback
 import com.dkxce.radio_bridge.core.KissParser
 import java.util.UUID
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
 /** Callbacks delivered on the main thread. */
 interface BleEvents {
@@ -83,6 +86,18 @@ class BleBridge(
     })
     private var scanner: BluetoothLeScanner? = null
     private var connectedAddr: String? = null
+
+    // GATT operation wait-for-completion (used by CfgIo clone mode). Android BLE
+    // allows only ONE outstanding ATT operation; Python's bleak awaits each
+    // write. We mirror that: a write/descriptor op is marked pending, the caller
+    // waits, and the callback below counts it down when the peripheral responds.
+    private class OpGate {
+        val latch = CountDownLatch(1)
+        var status = -1 // GATT_SUCCESS once done
+    }
+    private val opGate = AtomicReference<OpGate?>(null)
+    private var lastWriteUuid: UUID? = null
+    private var lastDescUuid: UUID? = null
 
     val isConnected: Boolean get() = gatt?.services?.isNotEmpty() == true
 
@@ -324,7 +339,95 @@ class BleBridge(
 
         override fun onCharacteristicWrite(g: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
             if (status != BluetoothGatt.GATT_SUCCESS) events.onError("Write status $status")
+            val gate = opGate.get()
+            val isExpected = characteristic.uuid == lastWriteUuid
+            if (gate != null && isExpected) {
+                lastWriteUuid = null
+                gate.status = status
+                gate.latch.countDown()
+            }
         }
+
+        override fun onDescriptorWrite(g: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int) {
+            val gate = opGate.get()
+            val isExpected = descriptor.uuid == lastDescUuid
+            if (gate != null && isExpected) {
+                lastDescUuid = null
+                gate.status = status
+                gate.latch.countDown()
+            }
+        }
+    }
+
+    /**
+     * Perform a write and WAIT for the stack to confirm it (onCharacteristicWrite).
+     * Returns GATT_SUCCESS on success. The actual BLE call is posted to the main
+     * thread (BLE stack requirement), the latch is awaited on THIS (worker)
+     * thread. Only one of these may run at a time, and it must not be called from
+     * the main thread (would deadlock).
+     */
+    @SuppressLint("MissingPermission")
+    fun writeAwait(ch: BluetoothGattCharacteristic, data: ByteArray, timeoutMs: Long = 10000): Int {
+        if (Looper.myLooper() == Looper.getMainLooper())
+            return BluetoothGatt.GATT_FAILURE // caller should not block main
+        val gate = OpGate()
+        opGate.set(gate)
+        lastWriteUuid = ch.uuid
+        main.post {
+            try {
+                if (android.os.Build.VERSION.SDK_INT >= 33) {
+                    gatt?.writeCharacteristic(ch, data, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT)
+                } else {
+                    ch.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+                    gatt?.writeCharacteristic(ch)
+                }
+            } catch (e: Exception) {
+                events.onError("BLE write exception: $e")
+                opGate.set(null); lastWriteUuid = null
+                gate.latch.countDown() // release waiter on error
+            }
+        }
+        try {
+            if (!gate.latch.await(timeoutMs, TimeUnit.MILLISECONDS)) {
+                opGate.set(null); lastWriteUuid = null
+                return BluetoothGatt.GATT_FAILURE
+            }
+        } catch (e: InterruptedException) {
+            opGate.set(null); lastWriteUuid = null
+            return BluetoothGatt.GATT_FAILURE
+        }
+        return gate.status
+    }
+
+    /** Write the CCCD descriptor and wait for onDescriptorWrite. Must run on a
+     *  worker thread (never main). */
+    @SuppressLint("MissingPermission")
+    fun writeDescriptorAwait(desc: BluetoothGattDescriptor, value: ByteArray, timeoutMs: Long = 10000): Int {
+        if (Looper.myLooper() == Looper.getMainLooper())
+            return BluetoothGatt.GATT_FAILURE // caller should not block main
+        val gate = OpGate()
+        opGate.set(gate)
+        lastDescUuid = desc.uuid
+        desc.value = value
+        main.post {
+            try {
+                gatt?.writeDescriptor(desc)
+            } catch (e: Exception) {
+                events.onError("BLE descriptor exception: $e")
+                opGate.set(null); lastDescUuid = null
+                gate.latch.countDown()
+            }
+        }
+        try {
+            if (!gate.latch.await(timeoutMs, TimeUnit.MILLISECONDS)) {
+                opGate.set(null); lastDescUuid = null
+                return BluetoothGatt.GATT_FAILURE
+            }
+        } catch (e: InterruptedException) {
+            opGate.set(null); lastDescUuid = null
+            return BluetoothGatt.GATT_FAILURE
+        }
+        return gate.status
     }
 
     /** Pick write/notify characteristics; prefer Odmaster af01/af02, else first

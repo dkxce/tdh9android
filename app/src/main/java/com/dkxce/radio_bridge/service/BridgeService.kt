@@ -414,7 +414,7 @@ class BridgeService : Service() {
             model.setAcfgBusy(false)
             return null
         }
-        if (acfgCfgIo == null) acfgCfgIo = com.dkxce.radio_bridge.ble.CfgIo(g)
+        if (acfgCfgIo == null) acfgCfgIo = com.dkxce.radio_bridge.ble.CfgIo(ble!!)
         return acfgCfgIo
     }
 

@@ -44,8 +44,10 @@ import java.util.concurrent.atomic.AtomicReference
  * characteristic, exchanges data, then restores normal operation.
  */
 class CfgIo(
-    private val gatt: BluetoothGatt,
+    private val bridge: BleBridge,
 ) {
+    private val gatt: BluetoothGatt get() = bridge.gattInstance()
+            ?: throw RuntimeException("not connected")
     companion object {
         val SERVICE_FF00 = UUID.fromString("0000ff00-0000-1000-8000-00805f9b34fb")
         val CHAR_FF_WRITE = UUID.fromString("0000ff02-0000-1000-8000-00805f9b34fb")
@@ -125,17 +127,21 @@ class CfgIo(
 
     @SuppressLint("MissingPermission")
     private fun writeNotifyDescriptor(n: BluetoothGattCharacteristic, enable: Boolean) {
-        runOnMain {
-            val desc = n.getDescriptor(UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"))
-                ?: throw RuntimeException("no CCCD descriptor on ff01")
-            desc.value = if (enable) BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-                else BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE
-            try {
-                gatt.writeDescriptor(desc)
-            } catch (e: Exception) {
-                throw RuntimeException("writeDescriptor: ${e.message}")
-            }
+        val desc = n.getDescriptor(UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"))
+            ?: throw RuntimeException("no CCCD descriptor on ff01")
+        // Some firmware answers the clone protocol with INDICATIONS (CCCD=0x0002)
+        // rather than NOTIFICATIONS (0x0001). bleak auto-selects; we must too,
+        // otherwise onCharacteristicChanged never fires and every read times out.
+        val value = if (enable) {
+            val isIndicate = (n.properties and BluetoothGattCharacteristic.PROPERTY_INDICATE) != 0
+            if (isIndicate) BluetoothGattDescriptor.ENABLE_INDICATION_VALUE
+            else BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+        } else {
+            BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE
         }
+        val st = bridge.writeDescriptorAwait(desc, value)
+        if (st != BluetoothGatt.GATT_SUCCESS)
+            throw RuntimeException("CCCD write status $st")
     }
 
     /** Enable ff01 notify + CCCD, then let the stack settle a moment so the
@@ -170,7 +176,7 @@ class CfgIo(
     }
 
     /** Read exactly [n] bytes from the accumulated notify buffer. */
-    private fun readExact(n: Int, timeoutMs: Long = 2500): ByteArray {
+    private fun readExact(n: Int, timeoutMs: Long = 2500, step: String = ""): ByteArray {
         val out = ArrayList<Byte>(n)
         val deadline = System.currentTimeMillis() + timeoutMs
         while (out.size < n) {
@@ -182,7 +188,11 @@ class CfgIo(
                 }
             }
             if (out.size >= n) break
-            if (System.currentTimeMillis() > deadline) throw RuntimeException("read timeout")
+            if (System.currentTimeMillis() > deadline) {
+                val buffered = synchronized(incomingLock) { incoming.size }
+                throw RuntimeException("read timeout${if (step.isNotEmpty()) " at [$step]" else ""} " +
+                        "(have ${out.size}/$n, buffered $buffered)")
+            }
             val left = deadline - System.currentTimeMillis()
             val w = wakeRef.get()
             if (w.count > 0) {
@@ -252,9 +262,9 @@ class CfgIo(
     private fun readBlock(address: Int): ByteArray {
         val expected = byteArrayOf(
             0x57, ((address ushr 8) and 0xFF).toByte(), (address and 0xFF).toByte(), BLOCK.toByte())
-        var header = readExact(4)
+        var header = readExact(4, step = "hdr@0x%04X".format(address))
         if (!header.contentEquals(expected)) {
-            val nxt = readExact(1)
+            val nxt = readExact(1, step = "hdr-shift@0x%04X".format(address))
             val shifted = byteArrayOf(header[1], header[2], header[3], nxt[0])
             if (shifted.contentEquals(expected)) {
                 header = shifted
@@ -262,38 +272,29 @@ class CfgIo(
         }
         if (!header.contentEquals(expected))
             throw RuntimeException("Invalid read header at 0x%04X: %s".format(address, hex(header)))
-        val data = readExact(BLOCK)
-        try { readExact(1, 100) } catch (_: Exception) {}
+        val data = readExact(BLOCK, step = "data@0x%04X".format(address))
+        try { readExact(1, 100, step = "chk@0x%04X".format(address)) } catch (_: Exception) {}
         return data
     }
 
     private fun enterCloneMode(write: BluetoothGattCharacteristic) {
-        command(write, MAGIC)
+        command(write, MAGIC, step = "magic-ack")
         writeGatt(write, byteArrayOf(0x02))
-        readExact(8)                       // 8-byte identity
-        command(write, byteArrayOf(0x06))  // ACK the identity -> ACK 0x06
+        readExact(8, step = "identity")          // 8-byte identity
+        command(write, byteArrayOf(0x06), step = "pmode-ack")  // ACK the identity -> ACK 0x06
     }
 
-    private fun command(write: BluetoothGattCharacteristic, data: ByteArray) {
+    private fun command(write: BluetoothGattCharacteristic, data: ByteArray, step: String = "") {
         writeGatt(write, data)
-        val ack = readExact(1)
+        val ack = readExact(1, step = step)
         if (ack[0] != 0x06.toByte()) throw RuntimeException("expected ACK, got ${hex(ack)}")
     }
 
     @SuppressLint("MissingPermission")
     private fun writeGatt(write: BluetoothGattCharacteristic, data: ByteArray) {
-        runOnMain {
-            try {
-                if (android.os.Build.VERSION.SDK_INT >= 33) {
-                    gatt.writeCharacteristic(write, data, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT)
-                } else {
-                    write.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
-                    gatt.writeCharacteristic(write)
-                }
-            } catch (e: Exception) {
-                throw RuntimeException("write failed: ${e.message}")
-            }
-        }
+        val st = bridge.writeAwait(write, data)
+        if (st != BluetoothGatt.GATT_SUCCESS)
+            throw RuntimeException("write status $st")
     }
 
     private fun exitCloneMode(write: BluetoothGattCharacteristic) {
