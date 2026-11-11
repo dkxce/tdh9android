@@ -2,18 +2,24 @@
  ==============================================================================
   CfgIo: TD-H9 settings image read/write over the FF00 clone service
   Author:  dkxce (c)  https://github.com/dkxce/Tidradio-TD-H9
-  Version: v1.4.0
+  Version: v1.5.0
 
   English:  Runs FF00 clone-mode transactions on the ALREADY-OPEN GATT
             connection (the same one used for KISS). Mirrors the Python
             ble_radio.py: enter clone mode with the MAGIC handshake, read
             each 32-byte block with 0x52, write with 0x57 + checksum + ACK
-            0x06, exit with 0x45. The whole flow runs on a background thread
-            and posts results to the main thread via callbacks, so it can be
-            driven from the Android UI without blocking it.
+            0x06, exit with 0x45.
+
+            IMPORTANT: all BluetoothGatt calls (setCharacteristicNotification,
+            writeDescriptor, writeCharacteristic) MUST run on the main thread,
+            and notifications must be active BEFORE the handshake starts —
+            otherwise the first responses of the radio are never delivered and
+            every read times out. This class posts every GATT operation to the
+            main thread and blocks the worker until it completes.
   Russian:  Чтение/запись образа настроек TD-H9 по сервису FF00 на уже
-            открытом GATT-соединении (порт логики ble_radio.py). Работает
-            в фоновом потоке, результаты отдаёт в main-thread колбэки.
+            открытом GATT-соединении (порт логики ble_radio.py). Все
+            GATT-вызовы выполняются в главном потоке и синхронизируются
+            с рабочим потоком.
  ==============================================================================
  */
 
@@ -23,7 +29,6 @@ import android.annotation.SuppressLint
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
-import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import java.util.UUID
@@ -54,6 +59,10 @@ class CfgIo(
 
     private val main = Handler(Looper.getMainLooper())
 
+    private var incoming = ArrayList<Byte>()
+    private val incomingLock = Any()
+    private val wakeRef = AtomicReference(CountDownLatch(1))
+
     // results
     class Result {
         var image: ByteArray? = null          // full image for download
@@ -80,38 +89,74 @@ class CfgIo(
     }
 
     // ------------------------------------------------------------------ sync primitives
-    // Android BLE callbacks arrive on the main thread; we bridge them with a
-    // latch (like asyncio Event) into the background worker thread.
+    // Run a GATT operation on the main thread and wait for it to finish, so the
+    // worker (background) thread sees a deterministic order. Android's BLE stack
+    // serialises operations anyway, but the calls themselves must come from the
+    // thread that owns the looper where the GATT callbacks are delivered.
 
-    private var incoming = ArrayList<Byte>()
-    private val incomingLock = Any()
-    private val wakeRef = AtomicReference(CountDownLatch(1))
+    private fun runOnMain(block: () -> Unit) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            block()
+            return
+        }
+        val done = CountDownLatch(1)
+        var t: Throwable? = null
+        main.post {
+            try { block() } catch (e: Throwable) { t = e } finally { done.countDown() }
+        }
+        try {
+            if (!done.await(10, TimeUnit.SECONDS)) throw RuntimeException("main-thread op timeout")
+        } catch (e: InterruptedException) {
+            throw RuntimeException("interrupted: $e")
+        }
+        t?.let { throw RuntimeException("GATT op failed: ${it.message}") }
+    }
 
     @SuppressLint("MissingPermission")
+    private fun setNotifyEnabled(n: BluetoothGattCharacteristic, enable: Boolean) {
+        runOnMain {
+            try {
+                gatt.setCharacteristicNotification(n, enable)
+            } catch (e: Exception) {
+                throw RuntimeException("setCharacteristicNotification: ${e.message}")
+            }
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun writeNotifyDescriptor(n: BluetoothGattCharacteristic, enable: Boolean) {
+        runOnMain {
+            val desc = n.getDescriptor(UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"))
+                ?: throw RuntimeException("no CCCD descriptor on ff01")
+            desc.value = if (enable) BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+                else BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE
+            try {
+                gatt.writeDescriptor(desc)
+            } catch (e: Exception) {
+                throw RuntimeException("writeDescriptor: ${e.message}")
+            }
+        }
+    }
+
+    /** Enable ff01 notify + CCCD, then let the stack settle a moment so the
+     *  descriptor write reaches the peripheral before the handshake bytes. */
     private fun installNotify(notify: BluetoothGattCharacteristic) {
         notifyChar = notify
-        gatt.setCharacteristicNotification(notify, true)
-        val desc = notify.getDescriptor(
-            UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"))
-        desc?.let { d ->
-            d.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-            gatt.writeDescriptor(d)
-        }
-        // remember that this connection is currently in clone mode
+        setNotifyEnabled(notify, true)
+        writeNotifyDescriptor(notify, true)
+        // BLE stack needs a beat to actually apply the subscription; without it
+        // the first radio replies (handshake ACK/identity) are silently dropped.
+        try { Thread.sleep(200) } catch (_: InterruptedException) {}
         if (CfgIoCompanionFlags.onCloneModeChanged != null) {
             CfgIoCompanionFlags.onCloneModeChanged?.invoke(true)
         }
     }
 
-    @SuppressLint("MissingPermission")
     private fun uninstallNotify() {
         val n = notifyChar ?: return
         notifyChar = null
-        try { gatt.setCharacteristicNotification(n, false) } catch (_: Exception) {}
-        try {
-            val desc = n.getDescriptor(UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"))
-            desc?.let { gatt.writeDescriptor(it) }
-        } catch (_: Exception) {}
+        try { writeNotifyDescriptor(n, false) } catch (_: Exception) {}
+        try { setNotifyEnabled(n, false) } catch (_: Exception) {}
         if (CfgIoCompanionFlags.onCloneModeChanged != null) {
             CfgIoCompanionFlags.onCloneModeChanged?.invoke(false)
         }
@@ -139,7 +184,6 @@ class CfgIo(
             if (out.size >= n) break
             if (System.currentTimeMillis() > deadline) throw RuntimeException("read timeout")
             val left = deadline - System.currentTimeMillis()
-            // wait for wake (main thread will count it down); use max(1,..) ms
             val w = wakeRef.get()
             if (w.count > 0) {
                 try {
@@ -148,8 +192,6 @@ class CfgIo(
                     throw RuntimeException("interrupted")
                 }
             }
-            // fresh latch for the next wait (a stale counted-down latch would
-            // return immediately)
             wakeRef.set(CountDownLatch(1))
         }
         return ByteArray(out.size) { out[it] }
@@ -212,7 +254,6 @@ class CfgIo(
             0x57, ((address ushr 8) and 0xFF).toByte(), (address and 0xFF).toByte(), BLOCK.toByte())
         var header = readExact(4)
         if (!header.contentEquals(expected)) {
-            // a late checksum byte from the previous block may precede the header
             val nxt = readExact(1)
             val shifted = byteArrayOf(header[1], header[2], header[3], nxt[0])
             if (shifted.contentEquals(expected)) {
@@ -222,17 +263,11 @@ class CfgIo(
         if (!header.contentEquals(expected))
             throw RuntimeException("Invalid read header at 0x%04X: %s".format(address, hex(header)))
         val data = readExact(BLOCK)
-        // optional firmware checksum byte (auto-detected on first read in Python;
-        // here we peek with a short timeout)
         try { readExact(1, 100) } catch (_: Exception) {}
         return data
     }
 
     private fun enterCloneMode(write: BluetoothGattCharacteristic) {
-        // Python ble_radio handshake:
-        //   MAGIC      -> ACK (command())
-        //   0x02       -> 8-byte identity (NO ack expected here)
-        //   0x06       -> ACK 0x06
         command(write, MAGIC)
         writeGatt(write, byteArrayOf(0x02))
         readExact(8)                       // 8-byte identity
@@ -247,15 +282,17 @@ class CfgIo(
 
     @SuppressLint("MissingPermission")
     private fun writeGatt(write: BluetoothGattCharacteristic, data: ByteArray) {
-        try {
-            if (android.os.Build.VERSION.SDK_INT >= 33) {
-                gatt.writeCharacteristic(write, data, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT)
-            } else {
-                write.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
-                gatt.writeCharacteristic(write)
+        runOnMain {
+            try {
+                if (android.os.Build.VERSION.SDK_INT >= 33) {
+                    gatt.writeCharacteristic(write, data, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT)
+                } else {
+                    write.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+                    gatt.writeCharacteristic(write)
+                }
+            } catch (e: Exception) {
+                throw RuntimeException("write failed: ${e.message}")
             }
-        } catch (e: Exception) {
-            throw RuntimeException("write failed: ${e.message}")
         }
     }
 
