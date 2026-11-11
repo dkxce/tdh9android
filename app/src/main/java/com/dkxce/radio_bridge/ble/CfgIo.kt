@@ -291,7 +291,7 @@ class CfgIo(
         return data
     }
 
-    private fun enterCloneMode(write: BluetoothGattCharacteristic) {
+    private fun enterCloneMode(write: BluetoothGattCharacteristic): ByteArray {
         // Python td9_aprs handshake: MAGIC, read ACK; 0x02, then read the
         // 8-byte identity AFTER skipping a possible late 0x06 (ACK of the
         // previous exit 0x45). Without that skip, a leftover 0x06 steals the
@@ -301,10 +301,10 @@ class CfgIo(
         writeGatt(write, byteArrayOf(0x02))
         var first = readExact(1, step = "identity")[0]
         for (i in 0 until 4) {
-            if (first != 0x06.toInt()) break
+            if (first != 0x06.toByte()) break
             first = readExact(1, step = "identity")[0]
         }
-        val ident = byteArrayOf(first.toByte()) + readExact(7, step = "identity-rest")
+        val ident = byteArrayOf(first) + readExact(7, step = "identity-rest")
         command(write, byteArrayOf(0x06), step = "pmode-ack")  // ACK the identity -> ACK 0x06
         return ident
     }
