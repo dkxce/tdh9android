@@ -76,6 +76,9 @@ class CfgIo(
 
     private var notifyChar: BluetoothGattCharacteristic? = null
 
+    /** True if ff02 supports WRITE (with response). */
+    private var writeHasResponse: Boolean = true
+
     /** Locate ff01 notify + ff02 write on the FF00 service. */
     @SuppressLint("MissingPermission")
     private fun resolve(): Pair<BluetoothGattCharacteristic, BluetoothGattCharacteristic>? {
@@ -83,8 +86,18 @@ class CfgIo(
         var write: BluetoothGattCharacteristic? = null
         var notify: BluetoothGattCharacteristic? = null
         for (ch in svc.characteristics) {
-            if (ch.uuid == CHAR_FF_WRITE) write = ch
-            else if (ch.uuid == CHAR_FF_NOTIFY) notify = ch
+            if (ch.uuid == CHAR_FF_WRITE) {
+                write = ch
+                // TD-H9 ff02 is often WRITE-WITHOUT-RESPONSE only; the radio
+                // answers each command with a 0x06 notify-ACK. Writing "with
+                // response" then stalls on a GATT-level ACK that never comes
+                // (and may confuse the peripheral). Mirror ble_radio: pick the
+                // write type from the advertised properties.
+                writeHasResponse = (ch.properties and
+                        BluetoothGattCharacteristic.PROPERTY_WRITE) != 0
+            } else if (ch.uuid == CHAR_FF_NOTIFY) {
+                notify = ch
+            }
         }
         if (write == null || notify == null) return null
         return write to notify
@@ -233,8 +246,9 @@ class CfgIo(
                 val write = pair.first; val notify = pair.second
                 installNotify(notify)
                 wireEventCallback()
-                enterCloneMode(write)
+                val ident = enterCloneMode(write)
                 val image = ByteArray(IMAGE_SIZE)
+                System.arraycopy(ident, 0, image, 0, 8)   // identity header
                 for (address in 0 until MEM_SIZE step BLOCK) {
                     val cmd = byteArrayOf(
                         0x52, ((address ushr 8) and 0xFF).toByte(), (address and 0xFF).toByte(), BLOCK.toByte())
@@ -278,10 +292,21 @@ class CfgIo(
     }
 
     private fun enterCloneMode(write: BluetoothGattCharacteristic) {
+        // Python td9_aprs handshake: MAGIC, read ACK; 0x02, then read the
+        // 8-byte identity AFTER skipping a possible late 0x06 (ACK of the
+        // previous exit 0x45). Without that skip, a leftover 0x06 steals the
+        // first byte of the identity and the last identity byte (0x4E for
+        // Normal firmware) is misread as the next ACK.
         command(write, MAGIC, step = "magic-ack")
         writeGatt(write, byteArrayOf(0x02))
-        readExact(8, step = "identity")          // 8-byte identity
+        var first = readExact(1, step = "identity")[0]
+        for (i in 0 until 4) {
+            if (first != 0x06.toInt()) break
+            first = readExact(1, step = "identity")[0]
+        }
+        val ident = byteArrayOf(first.toByte()) + readExact(7, step = "identity-rest")
         command(write, byteArrayOf(0x06), step = "pmode-ack")  // ACK the identity -> ACK 0x06
+        return ident
     }
 
     private fun command(write: BluetoothGattCharacteristic, data: ByteArray, step: String = "") {
@@ -292,9 +317,15 @@ class CfgIo(
 
     @SuppressLint("MissingPermission")
     private fun writeGatt(write: BluetoothGattCharacteristic, data: ByteArray) {
-        val st = bridge.writeAwait(write, data)
-        if (st != BluetoothGatt.GATT_SUCCESS)
-            throw RuntimeException("write status $st")
+        if (writeHasResponse) {
+            val st = bridge.writeAwait(write, data)
+            if (st != BluetoothGatt.GATT_SUCCESS)
+                throw RuntimeException("write status $st")
+        } else {
+            // WRITE-NO-RESPONSE: fire and let the notify-ACK (0x06) come back;
+            // the subsequent readExact() waits for it.
+            bridge.writeNoResponse(write, data)
+        }
     }
 
     private fun exitCloneMode(write: BluetoothGattCharacteristic) {

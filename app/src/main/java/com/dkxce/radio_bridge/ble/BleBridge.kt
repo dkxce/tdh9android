@@ -368,6 +368,38 @@ class BleBridge(
      */
     @SuppressLint("MissingPermission")
     fun writeAwait(ch: BluetoothGattCharacteristic, data: ByteArray, timeoutMs: Long = 10000): Int {
+        return writeAwaitTyped(ch, data, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT, timeoutMs)
+    }
+
+    /**
+     * Fire-and-forget write (WRITE_NO_RESPONSE): posts to main, returns
+     * immediately. The radio answers each FF00 command with a 0x06 notify-ACK,
+     * so no GATT-level response is waited for (and none may come). The caller
+     * must sequence through the notify buffer instead.
+     */
+    @SuppressLint("MissingPermission")
+    fun writeNoResponse(ch: BluetoothGattCharacteristic, data: ByteArray) {
+        main.post {
+            try {
+                if (android.os.Build.VERSION.SDK_INT >= 33) {
+                    gatt?.writeCharacteristic(ch, data, BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE)
+                } else {
+                    ch.writeType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+                    gatt?.writeCharacteristic(ch)
+                }
+            } catch (e: Exception) {
+                events.onError("BLE write exception: $e")
+            }
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun writeAwaitTyped(
+        ch: BluetoothGattCharacteristic,
+        data: ByteArray,
+        writeType: Int,
+        timeoutMs: Long,
+    ): Int {
         if (Looper.myLooper() == Looper.getMainLooper())
             return BluetoothGatt.GATT_FAILURE // caller should not block main
         val gate = OpGate()
@@ -376,9 +408,9 @@ class BleBridge(
         main.post {
             try {
                 if (android.os.Build.VERSION.SDK_INT >= 33) {
-                    gatt?.writeCharacteristic(ch, data, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT)
+                    gatt?.writeCharacteristic(ch, data, writeType)
                 } else {
-                    ch.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+                    ch.writeType = writeType
                     gatt?.writeCharacteristic(ch)
                 }
             } catch (e: Exception) {
