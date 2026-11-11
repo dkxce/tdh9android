@@ -151,10 +151,10 @@ class MainActivity : ComponentActivity() {
                         startService(BridgeService.ACTION_ACFG_UPLOAD)
                     },
                     onAcfgFieldGet = { key ->
-                        startService(BridgeService.ACTION_ACFG_FIELD_GET, key)
+                        startAcfgService(BridgeService.ACTION_ACFG_FIELD_GET, key)
                     },
                     onAcfgFieldSet = { key ->
-                        startService(BridgeService.ACTION_ACFG_FIELD_SET, key)
+                        startAcfgService(BridgeService.ACTION_ACFG_FIELD_SET, key)
                     },
                     onAcfgValueChange = { key, value ->
                         viewModel.setAcfgValue(key, value)
@@ -185,7 +185,7 @@ class MainActivity : ComponentActivity() {
         launch(i)
     }
 
-    private fun startService(action: String, key: String) {
+    private fun startAcfgService(action: String, key: String) {
         val i = Intent(this, BridgeService::class.java).setAction(action)
         i.putExtra(BridgeService.EXTRA_ACFG_KEY, key)
         launch(i)
