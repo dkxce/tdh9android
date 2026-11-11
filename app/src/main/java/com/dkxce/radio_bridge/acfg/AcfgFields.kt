@@ -83,7 +83,7 @@ val ACFG_GROUPS: List<Pair<String, List<AcfgField>>> = listOf(
         AcfgField("fixed_alt", "Fixed Altitude", 0x3076, FieldKind.COORD4),
     ),
     "Site Type" to listOf(
-        AcfgField("station_type", "Position source", 0x307B, FieldKind.YESNO, isChoice = true),
+        AcfgField("station_type", "Position source", 0x307B, FieldKind.BYTE, isChoice = true),
     ),
     "APRS" to listOf(
         AcfgField("aprs_on", "APRS Switch", 0x307C, FieldKind.YESNO, isChoice = true),
