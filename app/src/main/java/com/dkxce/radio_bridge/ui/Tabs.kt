@@ -31,7 +31,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.foundation.Image
 import com.dkxce.radio_bridge.app.BridgeConfig
 import com.dkxce.radio_bridge.app.ServerMode
 import com.dkxce.radio_bridge.app.UiState
@@ -258,6 +261,7 @@ fun AboutTab(
     onExportSettings: () -> Unit,
     onImportSettings: () -> Unit,
     onTabVisibilityChange: (Boolean, Boolean, Boolean, Boolean) -> Unit,
+    onAcfgTabVisibility: (Boolean) -> Unit,
 ) {
     val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
     @Composable
@@ -325,6 +329,12 @@ fun AboutTab(
                             onCheckedChange = { onTabVisibilityChange(state.showServerTab, state.showIGateTab, state.showProxyTab, it) })
                         Text("Enable GPSGateProxy Mode", modifier = Modifier.weight(1f))
                     }
+                }
+                // ACFG tab: radio GNSS/APRS config read/write (off by default)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = state.showAcfgTab,
+                        onCheckedChange = { onAcfgTabVisibility(it) })
+                    Text("Show ACFG tab", modifier = Modifier.weight(1f))
                 }
             }
         }
@@ -817,7 +827,6 @@ fun GpsGateTab(
 }
 
 /** Default preset GPSGate servers (used when the remote list is unavailable). */
-private val GPSGATE_PRESETS_DEFAULT = listOf(
     "vega.livegpstracks.ru:3333",
     "leo.livegpstracks.ru:3333",
     "orion.livegpstracks.com:3333",
@@ -989,6 +998,205 @@ private fun GpsGateServerCard(
                 GpsGateImeiSource.CRC_FRCMD ->
                     Text("IMEI = CRC64(sender id)\n(\$FRCMD sender or OkMap uuid)", style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
+/** ACFG tab: radio GNSS / APRS / Site Type settings read + write (FF00 clone). */
+@Composable
+fun AcfgTab(
+    state: UiState,
+    onAcfgDownload: () -> Unit,
+    onAcfgUpload: () -> Unit,
+    onAcfgFieldGet: (String) -> Unit,
+    onAcfgFieldSet: (String) -> Unit,
+    onAcfgValueChange: (String, String) -> Unit = { _, _ -> },
+) {
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text("ACFG — Radio Configuration (GNSS / APRS / Site Type)",
+            style = MaterialTheme.typography.titleMedium)
+
+        // status + progress
+        if (state.acfgBusy || state.acfgProgress > 0f) {
+            LinearProgressIndicator(
+                progress = { state.acfgProgress },
+                modifier = Modifier.fillMaxWidth())
+        }
+        if (state.acfgStatus.isNotEmpty()) {
+            Text(state.acfgStatus, style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary)
+        }
+
+        // top actions
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = onAcfgDownload, enabled = !state.acfgBusy,
+                modifier = Modifier.weight(1f)) {
+                Icon(androidx.compose.material.icons.Icons.Filled.Save, null)
+                Spacer(Modifier.width(6.dp)); Text("Download all")
+            }
+            Button(onClick = onAcfgUpload, enabled = !state.acfgBusy,
+                modifier = Modifier.weight(1f)) {
+                Icon(androidx.compose.material.icons.Icons.Filled.PlayArrow, null)
+                Spacer(Modifier.width(6.dp)); Text("Upload all")
+            }
+        }
+
+        // field groups
+        for ((group, fields) in com.dkxce.radio_bridge.acfg.ACFG_GROUPS_BUILT) {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(group, style = MaterialTheme.typography.labelLarge)
+                    fields.forEach { field ->
+                        AcfgFieldRow(
+                            field = field,
+                            value = state.acfgValues[field.key] ?: "",
+                            tableValue = state.acfgValues["icon_table"] ?: "Primary /",
+                            busy = state.acfgBusy,
+                            onValueChange = { onAcfgValueChange(field.key, it) },
+                            onTableChange = { tableLabel -> onAcfgValueChange("icon_table", tableLabel) },
+                            onGet = { onAcfgFieldGet(field.key) },
+                            onSet = { onAcfgFieldSet(field.key) },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AcfgFieldRow(
+    field: com.dkxce.radio_bridge.acfg.AcfgField,
+    value: String,
+    tableValue: String,
+    busy: Boolean,
+    onValueChange: (String) -> Unit,
+    onTableChange: (String) -> Unit = {},
+    onGet: () -> Unit,
+    onSet: () -> Unit,
+) {
+    var editing by remember { mutableStateOf(value) }
+    // keep the local editor in sync when the state value changes (loaded from radio)
+    LaunchedEffect(field.key, value) { editing = value }
+
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        // label + current value summary
+        Column(Modifier.weight(1f)) {
+            Text(field.label, style = MaterialTheme.typography.bodySmall)
+            Text(value.ifBlank { "—" }, style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        // edit control
+        when {
+            field.key == "icon_symbol" -> {
+                AppIconPickerButton(
+                    tableValue = tableValue,
+                    busy = busy,
+                    onPicked = { label, table ->
+                        // choosing an icon also updates the symbol table
+                        onValueChange(label)
+                        onTableChange(if (table == "secondary") "Alternate \\" else "Primary /")
+                    },
+                )
+            }
+            field.isChoice && field.choices.isNotEmpty() -> {
+                var expanded by remember { mutableStateOf(false) }
+                Box {
+                    OutlinedButton(onClick = { expanded = true }, enabled = !busy) {
+                        Text(value.ifBlank { field.choices.firstOrNull() ?: "" })
+                    }
+                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                        field.choices.forEach { c ->
+                            DropdownMenuItem(text = { Text(c) },
+                                onClick = { onValueChange(c); expanded = false })
+                        }
+                    }
+                }
+            }
+            else -> {
+                OutlinedTextField(
+                    value = editing,
+                    onValueChange = { editing = it; onValueChange(it) },
+                    singleLine = true,
+                    enabled = !busy,
+                    modifier = Modifier.width(160.dp),
+                )
+            }
+        }
+        Spacer(Modifier.width(4.dp))
+        TextButton(onClick = onGet, enabled = !busy) { Text("Get", style = MaterialTheme.typography.labelSmall) }
+        TextButton(onClick = onSet, enabled = !busy && (editing.isNotEmpty() || value.isNotEmpty())) { Text("Set", style = MaterialTheme.typography.labelSmall) }
+    }
+}
+
+/**
+ * Button that opens the APRS icon picker dialog; onPicked(label) is called with
+ * the "N: /sym - name" label of the chosen icon.
+ */
+@Composable
+private fun AppIconPickerButton(
+    tableValue: String,
+    busy: Boolean,
+    onPicked: (String, String) -> Unit,
+) {
+    val isAlternate = tableValue.startsWith("Alternate")
+    val icons = if (isAlternate)
+        com.dkxce.radio_bridge.acfg.AcfgIcons.SECONDARY
+    else com.dkxce.radio_bridge.acfg.AcfgIcons.PRIMARY
+    val tableName = if (isAlternate) "secondary" else "primary"
+    var showDialog by remember { mutableStateOf(false) }
+
+    OutlinedButton(onClick = { showDialog = true }, enabled = !busy) { Text("Pick…") }
+
+    if (showDialog) {
+        val dialog = Dialog(onDismissRequest = { showDialog = false }) {
+            Card(modifier = Modifier.fillMaxWidth().heightIn(max = 560.dp)) {
+                Column(Modifier.padding(12.dp)) {
+                    Text("APRS icon — ${if (isAlternate) "Secondary \\" else "Primary /"}",
+                        style = MaterialTheme.typography.titleSmall)
+                    Spacer(Modifier.height(6.dp))
+                    // grid of icons
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        items(icons) { ic ->
+                            val bmp = remember(ic.b64) {
+                                try {
+                                    val bytes = android.util.Base64.decode(ic.b64, android.util.Base64.DEFAULT)
+                                    android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                                } catch (e: Exception) { null }
+                            }
+                            Row(
+                                Modifier.fillMaxWidth()
+                                    .clickable {
+                                        onPicked(com.dkxce.radio_bridge.acfg.iconLabel(ic.n, tableName), tableName)
+                                        showDialog = false
+                                    }
+                                    .padding(4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                if (bmp != null) {
+                                    Image(
+                                        bitmap = bmp.asImageBitmap(),
+                                        contentDescription = ic.name,
+                                        modifier = Modifier.size(28.dp))
+                                } else {
+                                    Spacer(Modifier.size(28.dp))
+                                }
+                                Spacer(Modifier.width(8.dp))
+                                Text(ic.sym, style = MaterialTheme.typography.bodyMedium,
+                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                    modifier = Modifier.width(48.dp))
+                                Text(ic.name.ifBlank { ic.sym }, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
+                }
             }
         }
     }

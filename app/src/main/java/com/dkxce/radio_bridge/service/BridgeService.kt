@@ -120,6 +120,16 @@ class BridgeService : Service() {
             ACTION_STOP_GPSGATE -> stopGpsGate()
             ACTION_UPDATE_GPSGATE -> updateGpsGate()
             ACTION_RESET_GPSGATE_STATS -> { gpsGate?.resetStats() }
+            ACTION_ACFG_DOWNLOAD -> acfgDownload()
+            ACTION_ACFG_UPLOAD -> acfgUpload()
+            ACTION_ACFG_FIELD_GET -> {
+                val key = intent.getStringExtra(EXTRA_ACFG_KEY)
+                if (key != null) acfgFieldGet(key)
+            }
+            ACTION_ACFG_FIELD_SET -> {
+                val key = intent.getStringExtra(EXTRA_ACFG_KEY)
+                if (key != null) acfgFieldSet(key)
+            }
             ACTION_SEND_RADIO -> {
                 val data = intent.getByteArrayExtra(EXTRA_KISS)
                 if (data != null) sendToRadio(data)
@@ -392,6 +402,191 @@ class BridgeService : Service() {
         model.setGpsGateStats(g.statsSnapshot())
     }
 
+    // ------------------------------------------------------------------ ACFG
+    // Radio-config FBXX (GNSS / APRS / Site Type) read & write via the FF00
+    // clone service on the already-open connection. The state lives in
+    // AppModel; the UI sends intents and reads state via MainViewModel.
+    private var acfgCfgIo: com.dkxce.radio_bridge.ble.CfgIo? = null
+
+    private fun acfgIo(): com.dkxce.radio_bridge.ble.CfgIo? {
+        val g = ble?.gattInstance() ?: run {
+            model.appendLog("[ACFG!] not connected")
+            model.setAcfgBusy(false)
+            return null
+        }
+        if (acfgCfgIo == null) acfgCfgIo = com.dkxce.radio_bridge.ble.CfgIo(g)
+        return acfgCfgIo
+    }
+
+    private fun acfgDownload() {
+        val io = acfgIo() ?: return
+        model.setAcfgBusy(true)
+        model.setAcfgStatus("Downloading...")
+        io.downloadSettings(
+            onProgress = { done, total ->
+                model.setAcfgProgress(if (total > 0) done.toFloat() / total else 0f)
+                model.setAcfgStatus("Downloading ${done}/${total}")
+            },
+            onDone = { image ->
+                model.setAcfgProgress(1f)
+                model.setAcfgStatus("Downloaded ${image.size} bytes")
+                model.setAcfgBusy(false)
+                // decode all fields into the UI state
+                val values = LinkedHashMap<String, String>()
+                for ((_, fields) in com.dkxce.radio_bridge.acfg.ACFG_GROUPS_BUILT) {
+                    for (f in fields) {
+                        val raw = image.copyOfRange(8 + f.offset, 8 + f.offset + f.length)
+                        val v = com.dkxce.radio_bridge.acfg.decodeAcfgField(f, raw)
+                        values[f.key] = v
+                    }
+                }
+                model.setAcfgValues(values)
+                model.appendLog("[ACFG] settings downloaded (${values.size} fields)")
+            },
+            onError = { msg ->
+                model.setAcfgBusy(false)
+                model.setAcfgStatus("Error: $msg")
+                model.appendLog("[ACFG!] $msg")
+            },
+        )
+    }
+
+    private fun acfgUpload() {
+        val io = acfgIo() ?: return
+        // upload the current UI values as blocks. To keep it simple and safe we
+        // encode each field and write the touched blocks (like the desktop
+        // per-field Set). If the user changed many fields, this writes them
+        // one field at a time over the clone session.
+        val values = model.ui.value.acfgValues
+        if (values.isEmpty()) {
+            model.appendLog("[ACFG!] nothing to upload")
+            model.setAcfgBusy(false)
+            return
+        }
+        model.setAcfgBusy(true)
+        model.setAcfgStatus("Uploading...")
+        // collect encoded bytes for every field that has a non-empty value
+        val toWrite = mutableListOf<Pair<com.dkxce.radio_bridge.acfg.AcfgField, ByteArray>>()
+        var encodeErr: String? = null
+        for ((_, fields) in com.dkxce.radio_bridge.acfg.ACFG_GROUPS_BUILT) {
+            for (f in fields) {
+                val v = values[f.key]?.trim().orEmpty()
+                if (v.isEmpty()) continue
+                try {
+                    val enc = com.dkxce.radio_bridge.acfg.encodeAcfgField(f, v)
+                    toWrite.add(f to enc)
+                } catch (e: Exception) {
+                    encodeErr = "${f.key}: ${e.message}"
+                }
+            }
+        }
+        if (encodeErr != null) {
+            model.setAcfgBusy(false)
+            model.setAcfgStatus("Encode error: $encodeErr")
+            model.appendLog("[ACFG!] encode error: $encodeErr")
+            return
+        }
+        if (toWrite.isEmpty()) {
+            model.setAcfgBusy(false)
+            model.appendLog("[ACFG!] nothing to write")
+            return
+        }
+        uploadFieldsSequential(toWrite, 0)
+    }
+
+    private fun uploadFieldsSequential(
+        list: List<Pair<com.dkxce.radio_bridge.acfg.AcfgField, ByteArray>>,
+        index: Int,
+    ) {
+        if (index >= list.size) {
+            model.setAcfgBusy(false)
+            model.setAcfgProgress(1f)
+            model.setAcfgStatus("Uploaded ${list.size} field(s)")
+            model.appendLog("[ACFG] upload done (${list.size} field(s))")
+            return
+        }
+        val (field, bytes) = list[index]
+        val io = acfgIo() ?: return
+        model.setAcfgStatus("Writing ${field.key} (${index + 1}/${list.size})")
+        io.uploadField(
+            fieldOff = field.offset,
+            fieldBytes = bytes,
+            onDone = {
+                model.setAcfgProgress((index + 1).toFloat() / list.size)
+                uploadFieldsSequential(list, index + 1)
+            },
+            onError = { msg ->
+                model.setAcfgBusy(false)
+                model.setAcfgStatus("Error writing ${field.key}: $msg")
+                model.appendLog("[ACFG!] ${field.key}: $msg")
+            },
+        )
+    }
+
+    private fun acfgFieldGet(key: String) {
+        val field = com.dkxce.radio_bridge.acfg.ACFG_FIELDS[key] ?: run {
+            model.appendLog("[ACFG!] unknown field $key")
+            return
+        }
+        val io = acfgIo() ?: return
+        model.setAcfgBusy(true)
+        model.setAcfgStatus("Reading $key...")
+        io.downloadField(
+            fieldOff = field.offset,
+            fieldLen = field.length,
+            onRead = { raw ->
+                val v = com.dkxce.radio_bridge.acfg.decodeAcfgField(field, raw)
+                model.setAcfgValue(key, v)
+                model.setAcfgBusy(false)
+                model.setAcfgStatus("$key = $v")
+                model.appendLog("[ACFG] $key = $v")
+            },
+            onError = { msg ->
+                model.setAcfgBusy(false)
+                model.setAcfgStatus("Error reading $key: $msg")
+                model.appendLog("[ACFG!] $key: $msg")
+            },
+        )
+    }
+
+    private fun acfgFieldSet(key: String) {
+        val field = com.dkxce.radio_bridge.acfg.ACFG_FIELDS[key] ?: run {
+            model.appendLog("[ACFG!] unknown field $key")
+            return
+        }
+        val v = model.ui.value.acfgValues[key]?.trim().orEmpty()
+        if (v.isEmpty()) {
+            model.appendLog("[ACFG!] $key is empty")
+            model.setAcfgBusy(false)
+            return
+        }
+        val enc = try {
+            com.dkxce.radio_bridge.acfg.encodeAcfgField(field, v)
+        } catch (e: Exception) {
+            model.setAcfgBusy(false)
+            model.setAcfgStatus("Encode error $key: ${e.message}")
+            model.appendLog("[ACFG!] $key: ${e.message}")
+            return
+        }
+        val io = acfgIo() ?: return
+        model.setAcfgBusy(true)
+        model.setAcfgStatus("Writing $key...")
+        io.uploadField(
+            fieldOff = field.offset,
+            fieldBytes = enc,
+            onDone = {
+                model.setAcfgBusy(false)
+                model.setAcfgStatus("$key written")
+                model.appendLog("[ACFG] $key = $v")
+            },
+            onError = { msg ->
+                model.setAcfgBusy(false)
+                model.setAcfgStatus("Error writing $key: $msg")
+                model.appendLog("[ACFG!] $key: $msg")
+            },
+        )
+    }
+
     // ------------------------------------------------------------------ notification
     private fun createChannel() {
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
@@ -443,11 +638,16 @@ class BridgeService : Service() {
         const val ACTION_STOP_GPSGATE = "com.dkxce.radio_bridge.ACTION_STOP_GPSGATE"
         const val ACTION_UPDATE_GPSGATE = "com.dkxce.radio_bridge.ACTION_UPDATE_GPSGATE"
         const val ACTION_RESET_GPSGATE_STATS = "com.dkxce.radio_bridge.ACTION_RESET_GPSGATE_STATS"
+        const val ACTION_ACFG_DOWNLOAD = "com.dkxce.radio_bridge.ACTION_ACFG_DOWNLOAD"
+        const val ACTION_ACFG_UPLOAD = "com.dkxce.radio_bridge.ACTION_ACFG_UPLOAD"
+        const val ACTION_ACFG_FIELD_GET = "com.dkxce.radio_bridge.ACTION_ACFG_FIELD_GET"
+        const val ACTION_ACFG_FIELD_SET = "com.dkxce.radio_bridge.ACTION_ACFG_FIELD_SET"
         const val ACTION_SEND_RADIO = "com.dkxce.radio_bridge.ACTION_SEND_RADIO"
         const val EXTRA_ADDR = "addr"
         const val EXTRA_KISS = "kiss"
         const val EXTRA_MODE = "mode"
         const val EXTRA_PORT = "port"
+        const val EXTRA_ACFG_KEY = "acfg_key"
         private const val CHANNEL_ID = "bridge"
         private const val NOTIF_ID = 1
     }

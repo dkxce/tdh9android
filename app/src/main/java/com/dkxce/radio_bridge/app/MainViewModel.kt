@@ -58,6 +58,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun saveTabVisibility(showServer: Boolean, showIGate: Boolean, showProxy: Boolean, showGpsGate: Boolean) =
         model.saveTabVisibility(showServer, showIGate, showProxy, showGpsGate)
 
+    fun saveAcfgTabVisibility(show: Boolean) = model.saveAcfgTabVisibility(show)
+
+    // --- ACFG ---
+    fun setAcfgValue(key: String, value: String) = model.setAcfgValue(key, value)
+    fun setAcfgValues(values: Map<String, String>) = model.setAcfgValues(values)
+    fun setAcfgBusy(busy: Boolean) = model.setAcfgBusy(busy)
+    fun setAcfgProgress(p: Float) = model.setAcfgProgress(p)
+    fun setAcfgStatus(s: String) = model.setAcfgStatus(s)
+
     fun exportSettings(path: String) = model.exportSettings(java.io.File(path))
     fun importSettings(path: String) = model.importSettings(java.io.File(path))
     // Export/import into a SAF folder (decided by URI). Pass folderUri string.

@@ -50,6 +50,12 @@ fun RadioBridgeApp(
     onSaveGpsGateConfig: (GpsGateProxyConfig) -> Unit,
     onResetGpsGateStats: () -> Unit,
     onReapplyGpsGateConfig: () -> Unit,
+    onAcfgDownload: () -> Unit,
+    onAcfgUpload: () -> Unit,
+    onAcfgFieldGet: (String) -> Unit,
+    onAcfgFieldSet: (String) -> Unit,
+    onAcfgValueChange: (String, String) -> Unit,
+    onAcfgTabVisibility: (Boolean) -> Unit,
     onTabVisibilityChange: (Boolean, Boolean, Boolean, Boolean) -> Unit,
     onClearLog: () -> Unit,
     onExitApp: () -> Unit,
@@ -63,8 +69,9 @@ fun RadioBridgeApp(
         if (state.showIGateTab) add(AppTab(2, "IGate", Icons.Filled.Cloud))
         if (state.showProxyTab) add(AppTab(3, "Proxy", Icons.Filled.Link))
         if (state.showGpsGateTab) add(AppTab(4, "GPSGate", Icons.Filled.LocationOn))
-        add(AppTab(5, "Log", Icons.Filled.Description))
-        add(AppTab(6, "About", Icons.Filled.Info))
+        if (state.showAcfgTab) add(AppTab(5, "ACFG", Icons.Filled.Settings))
+        add(AppTab(6, "Log", Icons.Filled.Description))
+        add(AppTab(7, "About", Icons.Filled.Info))
     }
     var selected by remember { mutableStateOf(0) }
     // effective selection: fall back to Radio if the selected tab got hidden
@@ -91,8 +98,9 @@ fun RadioBridgeApp(
                 2 -> IGateTab(state, onStartIGate, onStopIGate, onSaveIGateConfig)
                 3 -> ProxyTab(state, onStartProxy, onStopProxy, onSaveProxyConfig, onResetProxyStats, onClearProxyLog, onClearCache)
                 4 -> GpsGateTab(state, onStartGpsGate, onStopGpsGate, onSaveGpsGateConfig, onResetGpsGateStats, onReapplyGpsGateConfig)
-                5 -> LogTab(state, onClearLog)
-                6 -> AboutTab(state, onExitApp, onExportSettings, onImportSettings, onTabVisibilityChange)
+                5 -> AcfgTab(state, onAcfgDownload, onAcfgUpload, onAcfgFieldGet, onAcfgFieldSet, onAcfgValueChange)
+                6 -> LogTab(state, onClearLog)
+                7 -> AboutTab(state, onExitApp, onExportSettings, onImportSettings, onTabVisibilityChange, onAcfgTabVisibility)
             }
         }
     }

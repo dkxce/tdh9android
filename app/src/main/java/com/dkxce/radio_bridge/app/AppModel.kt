@@ -66,6 +66,13 @@ data class UiState(
     val gpsGateConfig: GpsGateProxyConfig = GpsGateProxyConfig(),
     val gpsGateRunning: Boolean = false,
     val gpsGateStats: GpsGateStats = GpsGateStats(),
+    // ACFG tab (radio configuration) state
+    val showAcfgTab: Boolean = false,
+    val acfgValues: Map<String, String> = emptyMap(),
+    val acfgBusy: Boolean = false,
+    val acfgProgress: Float = 0f,          // 0..1
+    val acfgStatus: String = "",
+    val acfgLastAction: String = "",       // last ACFG op for status/log
     // tab visibility toggles (About -> Enable ... Mode)
     val showServerTab: Boolean = true,
     val showIGateTab: Boolean = true,
@@ -329,13 +336,38 @@ class AppModel private constructor(context: Context) {
             showIGateTab = prefs.getBoolean("ui_show_igate", true),
             showProxyTab = prefs.getBoolean("ui_show_proxy", false),
             showGpsGateTab = prefs.getBoolean("ui_show_gpsgate", false),
+            showAcfgTab = prefs.getBoolean("ui_show_acfg", false),
             showGpsGateCheckbox = prefs.getBoolean("ui_show_gpsgate_checkbox", false),
         )
+    }
+
+    fun saveAcfgTabVisibility(show: Boolean) {
+        prefs.edit().putBoolean("ui_show_acfg", show).apply()
+        _ui.value = _ui.value.copy(showAcfgTab = show)
     }
 
     fun setGpsGateCheckbox(show: Boolean) {
         prefs.edit().putBoolean("ui_show_gpsgate_checkbox", show).apply()
         _ui.value = _ui.value.copy(showGpsGateCheckbox = show)
+    }
+
+    // --- ACFG tab state (values edited in the UI, busy/progress/status) ---
+
+    fun setAcfgValue(key: String, value: String) {
+        val cur = _ui.value.acfgValues
+        _ui.value = _ui.value.copy(acfgValues = cur + (key to value))
+    }
+
+    fun setAcfgValues(values: Map<String, String>) {
+        _ui.value = _ui.value.copy(acfgValues = values)
+    }
+
+    fun setAcfgBusy(busy: Boolean) { _ui.value = _ui.value.copy(acfgBusy = busy) }
+
+    fun setAcfgProgress(p: Float) { _ui.value = _ui.value.copy(acfgProgress = p) }
+
+    fun setAcfgStatus(s: String) {
+        _ui.value = _ui.value.copy(acfgStatus = s, acfgLastAction = s)
     }
 
     // --- UI state mutators (called from ViewModel/service) ---
@@ -627,6 +659,7 @@ val p = o.optJSONObject("proxy")
         .put("showIGateTab", _ui.value.showIGateTab)
         .put("showProxyTab", _ui.value.showProxyTab)
         .put("showGpsGateTab", _ui.value.showGpsGateTab)
+        .put("showAcfgTab", _ui.value.showAcfgTab)
         .put("showGpsGateCheckbox", _ui.value.showGpsGateCheckbox)
 
     private fun uiFromJson(j: org.json.JSONObject) {
@@ -636,6 +669,7 @@ val p = o.optJSONObject("proxy")
             showProxy = j.optBoolean("showProxyTab", _ui.value.showProxyTab),
             showGpsGate = j.optBoolean("showGpsGateTab", _ui.value.showGpsGateTab),
         )
+        saveAcfgTabVisibility(j.optBoolean("showAcfgTab", _ui.value.showAcfgTab))
         setGpsGateCheckbox(j.optBoolean("showGpsGateCheckbox", _ui.value.showGpsGateCheckbox))
     }
 }

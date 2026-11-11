@@ -144,6 +144,24 @@ class MainActivity : ComponentActivity() {
                     onReapplyGpsGateConfig = {
                         startService(BridgeService.ACTION_UPDATE_GPSGATE)
                     },
+                    onAcfgDownload = {
+                        startService(BridgeService.ACTION_ACFG_DOWNLOAD)
+                    },
+                    onAcfgUpload = {
+                        startService(BridgeService.ACTION_ACFG_UPLOAD)
+                    },
+                    onAcfgFieldGet = { key ->
+                        startService(BridgeService.ACTION_ACFG_FIELD_GET, key)
+                    },
+                    onAcfgFieldSet = { key ->
+                        startService(BridgeService.ACTION_ACFG_FIELD_SET, key)
+                    },
+                    onAcfgValueChange = { key, value ->
+                        viewModel.setAcfgValue(key, value)
+                    },
+                    onAcfgTabVisibility = { show ->
+                        viewModel.saveAcfgTabVisibility(show)
+                    },
                     onTabVisibilityChange = viewModel::saveTabVisibility,
                     onSaveConfig = viewModel::saveConfig,
                     onClearLog = viewModel::clearLog,
@@ -164,6 +182,12 @@ class MainActivity : ComponentActivity() {
     private fun startService(action: String, addr: String? = null) {
         val i = Intent(this, BridgeService::class.java).setAction(action)
         if (addr != null) i.putExtra(BridgeService.EXTRA_ADDR, addr)
+        launch(i)
+    }
+
+    private fun startService(action: String, key: String) {
+        val i = Intent(this, BridgeService::class.java).setAction(action)
+        i.putExtra(BridgeService.EXTRA_ACFG_KEY, key)
         launch(i)
     }
 

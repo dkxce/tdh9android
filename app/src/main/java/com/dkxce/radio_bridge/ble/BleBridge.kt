@@ -86,6 +86,9 @@ class BleBridge(
 
     val isConnected: Boolean get() = gatt?.services?.isNotEmpty() == true
 
+    /** The underlying GATT object (shared with CfgIo clone-mode sessions). */
+    fun gattInstance(): BluetoothGatt? = gatt
+
     private fun adapter(): BluetoothAdapter? {
         // Prefer the static default adapter (works without extra permissions),
         // fall back to the manager-based one if needed.
@@ -308,6 +311,14 @@ class BleBridge(
         }
 
         override fun onCharacteristicChanged(g: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
+            // While the FF00 clone session is active, route FF01 notifications to
+            // the active CfgIo receiver instead of the KISS parser (both flows
+            // share the same GATT connection but never run at the same time).
+            val sink = CfgIoCompanionFlags.activeNotifySink()
+            if (sink != null && characteristic.uuid == UUID.fromString("0000ff01-0000-1000-8000-00805f9b34fb")) {
+                sink(characteristic.value ?: ByteArray(0))
+                return
+            }
             main.post { kissParser.feed(characteristic.value) }
         }
 
