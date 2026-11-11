@@ -2,7 +2,7 @@
  ==============================================================================
   ACFG field model: GNSS / Site Type / APRS / Relay-Routing / Advanced config
   Author:  dkxce (c)  https://github.com/dkxce/Tidradio-TD-H9
-  Version: v1.4.0
+  Version: v1.5.0
 
   English:  Kotlin port of the desktop td9_aprs.py field tables (WRITABLE,
             SETTINGS_GROUPS, CHOICE_FIELDS) plus the decode/encode logic, so

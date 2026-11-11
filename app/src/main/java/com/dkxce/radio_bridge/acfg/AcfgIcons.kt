@@ -2,7 +2,7 @@
  ==============================================================================
   APRS symbol table icons (base64 PNG) for the ACFG tab.
   Author:  dkxce (c)  https://github.com/dkxce/Tidradio-TD-H9
-  Version: v1.4.0
+  Version: v1.5.0
 
   English:  Generated from the desktop aprs_icons_data.py (the same base64 PNGs, source APRS_symbols.md). Contains all 94 Primary and 94
             Secondary symbols.

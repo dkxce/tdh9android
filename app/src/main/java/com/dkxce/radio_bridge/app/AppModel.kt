@@ -2,7 +2,7 @@
  ==============================================================================
   App settings + live UI state (SharedPreferences-backed)
   Author:  dkxce (c)  https://github.com/dkxce/Tidradio-TD-H9
-  Version: v1.4.0
+  Version: v1.5.0
 
   English:  Process-wide singleton holding the app configuration (server mode,
             port, device history) and the UI state (devices, server status,

@@ -2,7 +2,7 @@
  ==============================================================================
   Compose tabs: device / server / log / about
   Author:  dkxce (c)  https://github.com/dkxce/Tidradio-TD-H9
-  Version: v1.4.0
+  Version: v1.5.0
 
   English:  DeviceTab (scan/connect/history), ServerTab (mode/port/start-stop,
             client list, local addresses), LogTab and AboutTab.
@@ -281,7 +281,7 @@ fun AboutTab(
         Text("TDH9RadioBridge", style = MaterialTheme.typography.headlineMedium)
         Text("BLE KISS TNC bridge: TIDRadio TD-H9 ⇄ TCP/IP (KISS / AGWPE / APRS-IS / AIS)",
             style = MaterialTheme.typography.bodyMedium)
-        Text("Version: v1.4.0 extended", style = MaterialTheme.typography.bodySmall)
+        Text("Version: v1.5.0 extended", style = MaterialTheme.typography.bodySmall)
         Spacer(Modifier.height(8.dp))
         Text("Author: dkxce", style = MaterialTheme.typography.titleMedium)
         link("https://github.com/dkxce", "GitHub: https://github.com/dkxce")

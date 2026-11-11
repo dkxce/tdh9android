@@ -2,7 +2,7 @@
  ==============================================================================
   Main activity: permissions, ViewModel, BridgeService control, UI
   Author:  dkxce (c)  https://github.com/dkxce/Tidradio-TD-H9
-  Version: v1.4.0
+  Version: v1.5.0
 
   English:  App entry point. Requests Bluetooth/location/notification
             permissions, starts the foreground BridgeService and hosts the
