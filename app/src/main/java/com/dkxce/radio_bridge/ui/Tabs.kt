@@ -827,6 +827,7 @@ fun GpsGateTab(
 }
 
 /** Default preset GPSGate servers (used when the remote list is unavailable). */
+private val GPSGATE_PRESETS_DEFAULT = listOf(
     "vega.livegpstracks.ru:3333",
     "leo.livegpstracks.ru:3333",
     "orion.livegpstracks.com:3333",
