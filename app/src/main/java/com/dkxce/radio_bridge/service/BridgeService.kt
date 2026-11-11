@@ -465,9 +465,10 @@ class BridgeService : Service() {
         }
         model.setAcfgBusy(true)
         model.setAcfgStatus("Uploading...")
-        // collect encoded bytes for every field that has a non-empty value
+        // collect encoded bytes for every field that has a non-empty value;
+        // bad values (hand-typed / stale) are skipped with a log line instead of
+        // aborting the whole upload, mirroring the desktop behaviour.
         val toWrite = mutableListOf<Pair<com.dkxce.radio_bridge.acfg.AcfgField, ByteArray>>()
-        var encodeErr: String? = null
         for ((_, fields) in com.dkxce.radio_bridge.acfg.ACFG_GROUPS_BUILT) {
             for (f in fields) {
                 val v = values[f.key]?.trim().orEmpty()
@@ -476,19 +477,14 @@ class BridgeService : Service() {
                     val enc = com.dkxce.radio_bridge.acfg.encodeAcfgField(f, v)
                     toWrite.add(f to enc)
                 } catch (e: Exception) {
-                    encodeErr = "${f.key}: ${e.message}"
+                    model.appendLog("[ACFG!] skip ${f.key}: ${e.message}")
                 }
             }
         }
-        if (encodeErr != null) {
-            model.setAcfgBusy(false)
-            model.setAcfgStatus("Encode error: $encodeErr")
-            model.appendLog("[ACFG!] encode error: $encodeErr")
-            return
-        }
         if (toWrite.isEmpty()) {
             model.setAcfgBusy(false)
-            model.appendLog("[ACFG!] nothing to write")
+            model.setAcfgStatus("Encode error: nothing valid to write")
+            model.appendLog("[ACFG!] nothing valid to write")
             return
         }
         uploadFieldsSequential(toWrite, 0)

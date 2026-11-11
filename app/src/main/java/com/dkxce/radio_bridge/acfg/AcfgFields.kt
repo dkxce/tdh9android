@@ -122,9 +122,9 @@ val ACFG_GROUPS: List<Pair<String, List<AcfgField>>> = listOf(
     ),
 )
 
-/** All fields flattened; key -> field. */
+/** All fields flattened; key -> field (with choices attached). */
 val ACFG_FIELDS: Map<String, AcfgField> by lazy {
-    ACFG_GROUPS.flatMap { it.second }.associateBy { it.key }
+    ACFG_GROUPS_BUILT.flatMap { it.second }.associateBy { it.key }
 }
 
 /** Choice-value lists (same values/casing as desktop CHOICE_FIELDS). */
