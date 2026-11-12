@@ -117,7 +117,7 @@ val ACFG_GROUPS: List<Pair<String, List<AcfgField>>> = listOf(
     "Advanced Set" to listOf(
         AcfgField("rx_channel", "APRS RX CH", 0x310E, FieldKind.BYTE, isChoice = true),
         AcfgField("tx_channel", "APRS TX CH", 0x310F, FieldKind.BYTE, isChoice = true),
-        AcfgField("ptt_priority", "PTT Priority", 0x3110, FieldKind.YESNO, isChoice = true),
+        AcfgField("ptt_priority", "PTT Priority", 0x3110, FieldKind.BYTE, isChoice = true),
         AcfgField("rx_popup", "Beacon Auto Popup", 0x3113, FieldKind.YESNO, isChoice = true),
     ),
 )
