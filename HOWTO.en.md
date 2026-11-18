@@ -1,8 +1,8 @@
 # HOWTO: TDH9RadioBridge - detailed instructions for use
 
-**Version of document:**appendix**v1.2. 0**
+**Version of document:**correspondent**v1.2. 0**
 
-TDH9RadioBridge - the bridge between the radio**TIDRadio TD-H9**and external APRS applications through local TCP servers, as well as a gateway to the APRS-IS (IGate) and APRS-IS Proxy Internet network with AIS feed.
+TDH9RadioBridge – the bridge between the radio**TIDRadio TD-H9**and external APRS applications through local TCP servers, as well as a gateway to the APRS-IS (IGate) and APRS-IS Proxy Internet network with AIS feed.
 
 ---
 
@@ -29,7 +29,7 @@ The application consists of 6 tabs (lower navigation):
 
 | # | Tab | Appointment |
 | --- | --- | --- |
-| 0 | **Radio Radio** | BLE device scanning, radio connection, connection history, list of services found |
+| 0 | **Radio Radio** | Scanning BLE devices, connecting to a walkie-talkie, connection history, list of services found |
 | 1 | **Server** | Local TCP servers (KISS / AGW / APRS-IS): mode, port, start/stop, list of connected clients, local addresses |
 | 2 | **IGATE** | Gateway between radio and APRS-IS Internet network: login settings, filters, start/stop |
 | 3 | **Proxy** | APRS-IS Proxy: upstream settings, spread directions, AIS feed, statistics, clients, packet log |
@@ -50,9 +50,9 @@ The application consists of 6 tabs (lower navigation):
 2. Turn it on.**Positioning**(Location) on the phone – without it, BLE scanning on Android does not work (the app itself does not need GPS). On the first scan, the app will ask for Bluetooth permissions and location — allow.
 3. On the tab.**Radio Radio**press**Scan**. While scanning, the button shows the state of “Scanning...”
 4. Wait for the radio to appear in the list of found devices (name, MAC address, signal level)`RSSI, dBm`). The closer the radio, the better the RSSI.
-5. **Put it on the card.**radios in the "Scan" list (or in "History (previously connected)" for quick reconnection) - the application will start connecting over BLE.
+5. **Put it on the card.**walkie-talkie in the “Scan” list (or in “History (previously connected)” for quick reconnection) – the application will start connecting via BLE.
 6. With a successful connection, a card will appear at the top.**Connected: <name> (<address>)**And in the log,`[BLE] Connected ...`. You can then run servers/IGate/Proxy on other tabs.
-7. Press to shut down.**Disconnect**.
+7. Press to turn off**Disconnect**.
 
 **If the radio is not available:**Check that Bluetooth and Location are on and the radio is close.
 - Press it.**Scan**Repeat (sometimes you need a second scan).
@@ -60,12 +60,12 @@ Check that the radio is in BLE/APRS mode and is not connected to another device.
 
 ### Server tab (1)
 
-Launch.**single**local TCP server of the selected mode. Through it, external APRS applications (YAAC, UI-View32, APRSDroid, etc.) communicate with the radio.
+Launch.**single**Local TCP server of the selected mode. Through it, external APRS applications (YAAC, UI-View32, APRSDroid, etc.) communicate with the radio.
 
 * **Mode**Select the server mode (KISS / AGW / APRS-IS).
 * **Port Port Port**A TCP port that listens to the server.
 * **Start server / Stop server**- management.
-* **Server local addresses**IP addresses of the device (Wi-Fi/LAN) by which clients connect to the server.
+* **Server local addresses**Device IP addresses (Wi-Fi/LAN) where clients connect to the server.
 * A list of connected customers.
 
 **Detailed description of server operation modes:**
@@ -83,13 +83,13 @@ Choose.**Mode**and press**Start server**. Only one server works at a time (start
 - Default port:**8023**.
 
 **AGW mode (AGWPE):**- Implementing protocol.**AGW Packet Engine**(default port)**8000**in classics, including queries: version`R`), port information (`G`), possibilities (`g`), registration (`X`), monitoring (`m`), dispatch (`K`/`k`/`V`/`M`).
-Customers with monitor rights receive all radio traffic; the transmission is through AGW frames.
+Clients with monitor rights receive all radio traffic; the transmission is through AGW frames.
 - Suitable for software that works "through AGWPE".
 
 **APRS-IS mode:**- Emulating.**APRS-IS server**: client logs in line`user CALL pass PASSCODE vers ...`gets`# logresp CALL verified/unverified, server ...`.
--**Passcode verification is mandatory**(Standard APRS-IS Algorithm): With the correct password, the client is marked as`verified`, and the list of customers is displayed`aprs://CALL@ip:port/tx`; in the unfaithful,`.../rx`(read-only)
+-**Passcode verification is mandatory**(Standard APRS-IS Algorithm): With the correct password, the client is marked as`verified`, and the list of customers is displayed`aprs://CALL@ip:port/tx`. . . incorrectly.`.../rx`(read-only)
 - If the client didn't send.`user ...`its callsign is determined by the first package (`CALL>DST,...`).
-Packages from a client are encoded back into binary AX.25 and transmitted to a walkie-talkie; radio packets are broadcast to customers as text strings.
+Packages from the client are encoded back into binary AX.25 and transmitted to a walkie-talkie; radio packets are broadcast to customers as text strings.
 - Default port:**14580**.
 
 **Common to all regimes:**Broadcast from the radio goes to all connected customers (broadcast).
@@ -106,12 +106,12 @@ Independent gateway "radio air я APRS-IS" (network port). Connects to the APRS-
 
 ### Proxy tab (3)
 
-APRS-IS Proxy is a local APRS-IS server + upstream connection + AIS feed. It differs from IGate in that it is**server for local clients**And it connects them with the Internet and radio (directions are configured).
+APRS-IS Proxy is a local APRS-IS server + upstream connection + AIS feed. It differs from IGate in that it is**server for local clients**And it connects them with the Internet and radio (directions are customized).
 
 * Upstream settings (callsign/pass/server/ports/filter/igateName/credentials)
 * Group**forwarding**Direction checkboxes (see below).
 * **AIS feed**Enabling the AIS server and its port.
-* **Timing.**The ping/cache/idle intervals.
+* **Timing.**Ping/cache/idle intervals.
 * Packet counters, list of active customers, log of the last 20 packages.
 * **Start Proxy / Stop Proxy**, **Reset stats**, **Clear cache**, **Clear.**.
 
@@ -119,7 +119,7 @@ APRS-IS Proxy is a local APRS-IS server + upstream connection + AIS feed. It dif
 
 Journal of all events with time stamps`HH:mm:ss`. Each line is an event from one of the components:`[BLE]`, `[RX]`, `[KISS <-]`, `[AGW]`, `[APRS-IS]`, `[IGate ...]`, `[Proxy ...]`, `[AIS ...]`, `[Settings ...]`, `[Server]`.
 
-* **Clear.**- clear the journal.
+* **Clear.**- clear the magazine.
 * Not more than 200 last messages (protection from memory jam).
 
 ### Tab About (5)
@@ -160,12 +160,12 @@ Journal of all events with time stamps`HH:mm:ss`. Each line is an event from one
 | **Server port (upstream APRS-IS)** | Port of APRS-IS Internet Server. | `14580` |
 | **Client port (local listener)** | Port local APRS-IS server for clients. | `14580` |
 | **Filter** | Upstream filter (by default)`d/<IGATE_NAME> *`). | empty |
-| **Ilate NAME** | Call sign for correction`,qAR,<IGATE_NAME>`I'll go outside. | `NOCALL-1` |
+| **Ilate NAME** | Call sign for correction`,qAR,<IGATE_NAME>`I'll be on the radio outside. | `NOCALL-1` |
 | **Credentials** | Source of the upstream creed:`OWN` / `FIRST_CLIENT` / `LAST_CLIENT`by default**FIRST CLIENT**). | FIRST CLIENT |
 | **AIS port** | AIS feed TCP port for AIS clients. | `10110` |
 | **Ping (s)** | Keepalive-ping interval (upstream and local customers) | `90` |
 | **Cache (s)** | Lifetime of packet/position cache. | `90` |
-| **Idle timeout (s)** | After how many seconds to close upstream without demands. | `300` |
+| **Idle timeout (s)** | After how many seconds to close upstream without requirements. | `300` |
 
 ---
 
@@ -173,26 +173,26 @@ Journal of all events with time stamps`HH:mm:ss`. Each line is an event from one
 
 ### IGate (IGate tab)
 
-| checkbox | Description |
+| Checkbox | Description |
 | --- | --- |
-| **Requirement TCPIP** | Pass the packet on the radio only if on the way`TCPIP`. |
-| **Reject qAR** | Do not pass on the radio packets containing`qAR`. |
-| **Reject qAO** | Do not pass on the radio packets containing`qAO`. |
+| **Requirement TCPIP** | Pass the packet to the radio only if there is on the way`TCPIP`. |
+| **Reject qAR** | Do not pass packets containing`qAR`. |
+| **Reject qAO** | Do not pass packets containing`qAO`. |
 
 ### Proxy - Forwarding (Proxy tab)
 
 Grouped by source:
 
 **radio:**| Checkbox | Description |
-|--------|----------- |
+|--------|------------ |
 |**radio - Internet**| Packages from the radio go to the Internet APRS-IS (c)`,qAR`). |
 |**radio -> clients**| Packages from the radio are broadcast to local APRS clients. |
 |**radio -> clients cache**| Cache packets from the radio for newly connected customers (TTL = Cache). |
-|**radio -> ais**| From the radio packets, positions are allocated and left to AIS clients. |
+|**radio -> ais**| Radio packets are allocated positions and left to AIS clients. |
 |**radio -> ais cache**| Caching AIS positions from radio for reconnection. |
 
 **Internet:**| Checkbox | Description |
-|--------|----------- |
+|--------|------------ |
 |**Internet -> radio**| Packages from the Internet are transmitted to the radio. |
 |**Internet -> clients**| Packages from the Internet are broadcast to local customers. |
 |**Internet -> clients cache**| Cache Internet packages for newly connected customers. |
@@ -200,14 +200,14 @@ Grouped by source:
 |**Internet -> ais cache**| Caching AIS positions from the Internet. |
 
 **clients:**| Checkbox | Description |
-|--------|----------- |
+|--------|------------ |
 |**clients -> radio**| Packages from local customers are sent to the radio. |
 |**clients**| Packages from local customers go to the Internet (buffered when broken). |
 |**apply,qAR,radio out**| add`,qAR,<IGATE_NAME>`c radio packets before being sent out. |
 
 ### Proxy - AIS feed
 
-| checkbox | Description |
+| Checkbox | Description |
 | --- | --- |
 | **Enabled AIS** | Enable the AIS server on the port`AIS port`. |
 
@@ -221,7 +221,7 @@ Grouped by source:
 | **Disconnect** | Radio Radio | Turn off the radio. |
 | **Start server** | Server | Save settings and start the TCP server. |
 | **Stop the server.** | Server | Shut down the server. |
-| **Start IGATE** | IGATE | Save the settings and start IGate. |
+| **Start IGate** | IGATE | Save the settings and start IGate. |
 | **Stop IGATE** | IGATE | Stop IGate. |
 | **Start Proxy** | Proxy | Save settings and run a proxy (server + upstream + AIS). |
 | **Stop Proxy.** | Proxy | Stop the proxy. |
@@ -229,7 +229,7 @@ Grouped by source:
 | **Clear cache** | Proxy | Clear all caches (customer packets + AIS positions) without touching the counters. |
 | **Clear.** | Proxy (packet log) | Clear the last packet log. |
 | **Clear.** | Log. | Clear the event log. |
-| **Export settings (JSON)** | About | Select a folder (system dialogue) and write down`TDH9RadioBridgeBackup.json`. |
+| **Export settings (JSON)** | About | Select a folder (system dialogue) and write`TDH9RadioBridgeBackup.json`. |
 | **Import settings (JSON)** | About | Select a folder and read`TDH9RadioBridgeBackup.json`. |
 | **Exit application** | About | Complete exit from the app. |
 
@@ -289,10 +289,10 @@ When requesting permission, the button interface**Scan**It will show you what pe
 3. Make sure the radio is on BLE/APRS mode (see TD-H9); the radio should be “by ear”, not too far from the phone.
 4. Restart the scan (button)**Scan**).
 5. **GPS/location**:
-6. The GPS app itself.**needlessly**(It does not specify the coordinates).
+6. The GPS app itself**needlessly**(It does not specify the coordinates).
 7. But on Android.**BLE scanning requires enabled location service**Location, otherwise the scan will not return the device.
-8. Enable: Settings → Location → On (and allow the app “when used”). Accuracy is not important, you can only "device".
-9. After scanning, choose a walkie-talkie from the list (or from the history) - tap by card.
+8. Enable: Settings → Location → On (and allow the app “when used”). Accuracy is not important, you can "only device".
+9. After scanning, choose a walkie-talkie from the list (or from the history) - tap on the card.
 
 ---
 
@@ -315,7 +315,7 @@ Process diagrams - in the section[Schemes (PlantUML)](#схемы-plantuml).
 1. From the radio comes AX.25 UI frame → decoded into text`[RX] ...`).
 2. `IGateClient.radioRx(text)`:
 3. If the APRS-IS connection is not available or the IGate is turned off, the packet does not leave.
-4. Otherwise, the package path is added`,qAR,<IGATE_NAME>`(if there is one in the title)`>`);
+4. Otherwise, the package path is added`,qAR,<IGATE_NAME>`(if there is in the title)`>`);
 5. The package is sent to the APRS-IS socket.
 6. It's a log.`[IGate radio -> net] <исходный> -> <с qAR>`.
 
@@ -324,13 +324,13 @@ Scheme:`Manual/igate_principle.png`.
 ## Principle of routing IGate packets: Internet → radio
 
 1. The APRS-IS socket reads a line (`processServerLine`).
-2. Service lines`#`, `user ...`, `ping`) are ignored.
+2. Service lines (`#`, `user ...`, `ping`) are ignored.
 3. The decision to walk or not.`shouldGateToRadio`:
 4. if`IGATE_NAME`And he's not on the way.
 5. if`Require TCPIP`Not on the way.`TCPIP`- skip?
 6. if`Reject qAR`is`qAR`- skip?
 7. if`Reject qAO`is`qAO`- Skip.
-8. If all the checks are passed, the text is encoded back into the AX.25 UI frame, wrapped in KISS and transmitted via BLE to the radio. In the log--`[IGate net -> radio] ...`; at skip --`[IGate net --skip-> radio] ...`.
+8. If all the checks are passed, the text is encoded back into the AX.25 UI frame, wrapped in KISS and transmitted via BLE to the walkie-talkie. In the log--`[IGate net -> radio] ...`; at skip --`[IGate net --skip-> radio] ...`.
 
 Block diagram:`Manual/igate_aprs_flow.png`.
 
@@ -338,12 +338,12 @@ Block diagram:`Manual/igate_aprs_flow.png`.
 
 ## Principle and settings for routing Proxy packets
 
-Proxy (inlay)**Proxy**) is a local APRS-IS server (`Client port`), which:
+Proxy (inlay)**Proxy**) is a local APRS-IS server (`Client port`) which:
 
 * Accepts local APRS-IS clients (YAAC/APRSDroid, etc.);
-* keeper**single**upstream connection to real APRS-IS`Server`, `Server port`), the login is taken from**Credentials**(OWN/first/last connected client)
+* keeper**single**upstream connection to real APRS-IS`Server`, `Server port`), login is taken from**Credentials**(OWN/first/last connected client)
 * Spraying packages in all directions (checkboxes)**forwarding**);
-* generate**AIS feed**Positions from radio/internet packets turn into NMEA`!AIVDM`(type 1-3 + static 5) and broadcast to AIS clients (OruxMaps/OpenCPN)`AIS port`;
+* generate**AIS feed**Positions from radio/internet packets become NMEA`!AIVDM`(type 1-3 + static 5) and broadcast to AIS clients (OruxMaps/OpenCPN)`AIS port`;
 * **upstream active**If: There are connected clients**or**included`radio -> internet` **or** `internet -> radio` **or** `internet -> AIS`.
 
 Scheme:`Manual/proxy_principle.png`.
@@ -354,12 +354,12 @@ Scheme:`Manual/proxy_principle.png`.
 
 All the circuits are in the folder.**`Manual/`**(pictures)`.png`source`.puml`).
 
-| Scheme. | File. |
+| Schema. | File. |
 | --- | --- |
 | Principal scheme of work of IGate | ![IGate](Manual/igate_principle.png) |
 | Principal scheme of work of servers | ![Серверы](Manual/servers_principle.png) |
 | Principal scheme of work Proxy | ![Proxy](Manual/proxy_principle.png) |
-| Principle chart of data flows | ![Потоки данных](Manual/dataflow_principle.png) |
+| Data flow framework | ![Потоки данных](Manual/dataflow_principle.png) |
 | The principle scheme of architecture | ![Архитектура](Manual/architecture_principle.png) |
 | Block diagram of signal processing from the radio | ![Сигнал с рации](Manual/radio_signal_flow.png) |
 | APRS data processing block diagram with IGate | ![IGate APRS](Manual/igate_aprs_flow.png) |
